@@ -1,5 +1,6 @@
 #include <iostream>
 #include "vgl.h"
+#include <math.h>
 #include "LoadShaders.h"
 #include "glm/glm/glm.hpp"
 #include "glm/glm/gtc/matrix_transform.hpp"
@@ -15,10 +16,12 @@ GLuint VAOs[NumVAOs];
 GLuint Buffers[NumBuffers];
 
 const GLuint Numvertices = 6;
-int x_position = 30;
-int z_position = 60;
+int x_position = 0;
+int z_position = 5;
 int y_position = 0;
 GLuint program;
+glm::mat4 Model      = glm::mat4(1.0f);  // Changes for each model !
+
 
 void display()
 {
@@ -36,20 +39,16 @@ void display()
         glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
     );
     // Model matrix : an identity matrix (model will be at the origin)
-    glm::mat4 Model      = glm::mat4(1.0f);  // Changes for each model !
     // Our ModelViewProjection : multiplication of our 3 matrices
     glm::mat4 MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
     GLuint MatrixID = glGetUniformLocation(program, "MVP");
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
-
-    glDrawArrays(GL_TRIANGLES, 0, Numvertices);
-    glDrawArrays(GL_LINES, 6, 8);
-    glDrawArrays(GL_TRIANGLES, 14, Numvertices);
-    glDrawArrays(GL_LINES, 20, 4);
-    //glDrawArrays(GL_TRIANGLES, 24, Numvertices);
-    glDrawArraysInstanced(GL_TRIANGLES, 24, Numvertices, 3);
+    //Draw the circle
+    glDrawArrays(GL_LINE_LOOP, 0, 1000);
+    //Draw the lines
+    glDrawArrays(GL_LINES, 1000, 1000);
 
     glFlush();
     glutSwapBuffers();
@@ -71,61 +70,32 @@ void init()
     program = LoadShaders(shaders);
     glUseProgram(program);
 
+    int amount = 1000;
+    glm::vec2 circle_pos[amount*2];
 
-    GLfloat vertices[36][2] =
+    // calc degree to rad: PI / 180°
+    int radius = 1.0;
+    int count = 1000;
+    for( int i =0; i <= amount; i++ )
     {
-        { 0.0, 0.0 },
-        { 3.0, 0.0 },
-        { 0.0, 15.0 },
-        { 0.0, 15.0 },
-        { 3.0, 15.0 },
-        { 3.0, 0.0 },
+        float twicePI = 2*M_PI;
+        circle_pos[i].x += cos((float)i * twicePI/amount)*radius;
+        circle_pos[i].y += sin((float)i * twicePI/amount)*radius;
+        if(count < 2000)
+        {
+            circle_pos[count].x -= cos((float)i * twicePI/25)*radius;
+            circle_pos[count].y -= sin((float)i * twicePI/25)*radius;;
 
-        //Line 4
-        { 3.0, 7.5 },
-        { 10.0, 7.5 },
-        { 10.0, 7.5 },
-        { 10.0, 0.0 },
-        { 10.0, 0.0 },
-        { 10.0, 15.0 },
-        { 10.0, 15.0 },
-        { 15.0, 15.0 },
-
-        //Triangles
-        { 0.0 + 15.0, 0.0 },
-        { 3.0 + 15.0, 0.0 },
-        { 0.0 + 15.0, 15.0 },
-        { 0.0 +15.0, 15.0 },
-        { 3.0 + 15.0, 15.0 },
-        { 3.0 + 15.0, 0.0 },
-
-        //Line 6
-        { 22.0, 0.0 },
-        { 22.0, 15.0 },
-        { 22.0, 15.0 },
-        { 26.0, 15.0 },
-
-        //Triangle
-        { 22.0, 0.0 },
-        { 25.0, 0.0 },
-        { 31.0, 15.0 },
-        { 31.0, 15.0 },
-        { 34.0, 15.0 },
-        { 25.0, 0.0 },
-
-        //Triangle
-        { 27.0, 0.0 },
-        { 30.0, 0.0 },
-        { 36.0, 15.0 },
-        { 36.0, 15.0 },
-        { 39.0, 15.0 },
-        { 30.0, 0.0 }
-    };
+            circle_pos[count+1].x += cos((float)i * twicePI/25)*radius;
+            circle_pos[count+1].y += sin((float)i * twicePI/25)*radius;
+        }
+        count += 2;
+    }
 
     GLuint trianglebuffer;
     glGenBuffers(1, &trianglebuffer);
     glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * 2 * amount,circle_pos, GL_STATIC_DRAW);
 
     glGenVertexArrays(NumVAOs, VAOs);
     glBindVertexArray(VAOs[Triangles]);
@@ -174,6 +144,13 @@ void keyboard(unsigned char key, int x, int y)
     }
 }
 
+void timer(int value)
+{
+    Model = glm::rotate(Model, -0.3f, glm::vec3(0.0f, 0.0f, 1.0f));
+    glutPostRedisplay();
+    glutTimerFunc(25,timer,0);
+}
+
 int main(int argc, char** argv)
 {
     glewExperimental = GL_TRUE;
@@ -193,6 +170,7 @@ int main(int argc, char** argv)
     glutDisplayFunc(display);
     glutSpecialFunc(arrow_keys);
     glutKeyboardFunc(keyboard);
+    glutTimerFunc(25, timer, 0);
     if(glewInit()){
         cerr << "unable to init GLEW!" << endl;
         exit(EXIT_FAILURE);
