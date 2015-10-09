@@ -5,6 +5,8 @@
 #include "glm/glm/glm.hpp"
 #include "glm/glm/gtc/matrix_transform.hpp"
 #include "glm/glm/gtc/type_ptr.hpp"
+#include "controls.h"
+#include <GLFW/glfw3.h>
 
 using namespace std;
 
@@ -14,14 +16,9 @@ enum Attrib_IDs { vPosition = 0 };
 
 GLuint VAOs[NumVAOs];
 GLuint Buffers[NumBuffers];
-
-const GLuint Numvertices = 6;
-int x_position = 0;
-int z_position = 5;
-int y_position = 0;
 GLuint program;
-glm::mat4 Model      = glm::mat4(1.0f);  // Changes for each model !
 
+GLFWwindow* window;
 
 void display()
 {
@@ -30,28 +27,22 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT);
 
     glBindVertexArray(VAOs[Triangles]);
-
-    glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
-    // Camera matrix
-    glm::mat4 View       = glm::lookAt(
-        glm::vec3(x_position, y_position, z_position), // Camera is at (4,3,3), in World Space
-        glm::vec3(x_position, y_position, 0), // and looks at the origin
-        glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
-    );
-    // Model matrix : an identity matrix (model will be at the origin)
-    // Our ModelViewProjection : multiplication of our 3 matrices
-    glm::mat4 MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
+    // Compute the MVP matrix from keyboard and mouse input
+    computeMatricesFromInputs();
+    glm::mat4 ProjectionMatrix = getProjectionMatrix();
+    glm::mat4 ViewMatrix = getViewMatrix();
+    glm::mat4 ModelMatrix = glm::mat4(1.0);
+    glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
 
     GLuint MatrixID = glGetUniformLocation(program, "MVP");
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
     //Draw the circle
-    glDrawArrays(GL_LINE_LOOP, 0, 1000);
-    //Draw the lines
-    glDrawArrays(GL_LINES, 1000, 1000);
+    glDrawArrays(GL_TRIANGLES, 0, 12*3);
 
-    glFlush();
-    glutSwapBuffers();
+    // Swap buffers
+    glfwSwapBuffers(window);
+    glfwPollEvents();
 }
 
 void resize(int w, int h)
@@ -70,113 +61,97 @@ void init()
     program = LoadShaders(shaders);
     glUseProgram(program);
 
-    int amount = 1000;
-    glm::vec2 circle_pos[amount*2];
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // calc degree to rad: PI / 180°
-    int radius = 1.0;
-    int count = 1000;
-    for( int i =0; i <= amount; i++ )
-    {
-        float twicePI = 2*M_PI;
-        circle_pos[i].x += cos((float)i * twicePI/amount)*radius;
-        circle_pos[i].y += sin((float)i * twicePI/amount)*radius;
-        if(count < 2000)
-        {
-            circle_pos[count].x -= cos((float)i * twicePI/25)*radius;
-            circle_pos[count].y -= sin((float)i * twicePI/25)*radius;;
-
-            circle_pos[count+1].x += cos((float)i * twicePI/25)*radius;
-            circle_pos[count+1].y += sin((float)i * twicePI/25)*radius;
-        }
-        count += 2;
-    }
+    static const GLfloat g_vertex_buffer_data[] = {
+        -1.0f,-1.0f,-1.0f, // triangle 1 : begin
+        -1.0f,-1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f, // triangle 1 : end
+        1.0f, 1.0f,-1.0f, // triangle 2 : begin
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f,-1.0f, // triangle 2 : end
+        1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f,-1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f,-1.0f,
+        -1.0f, 1.0f,-1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f
+    };
 
     GLuint trianglebuffer;
     glGenBuffers(1, &trianglebuffer);
     glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * 2 * amount,circle_pos, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
     glGenVertexArrays(NumVAOs, VAOs);
     glBindVertexArray(VAOs[Triangles]);
 
     glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
     glEnableVertexAttribArray(0);
 }
 
-void arrow_keys(int key, int x, int y)
-{
-    switch(key)
-    {
-    case GLUT_KEY_LEFT:
-        x_position -=1;
-        display();
-        break;
-    case GLUT_KEY_RIGHT:
-        x_position += 1;
-        display();
-        break;
-    case GLUT_KEY_UP:
-        y_position += 1;
-        display();
-        break;
-    case GLUT_KEY_DOWN:
-        y_position -= 1;
-        display();
-        break;
-    }
-}
-
-void keyboard(unsigned char key, int x, int y)
-{
-    switch(key)
-    {
-    case '-':
-        z_position += 1;
-        display();
-        break;
-    case '+':
-        z_position -= 1;
-        display();
-        break;
-    }
-}
-
-void timer(int value)
-{
-    Model = glm::rotate(Model, -0.3f, glm::vec3(0.0f, 0.0f, 1.0f));
-    glutPostRedisplay();
-    glutTimerFunc(25,timer,0);
-}
-
 int main(int argc, char** argv)
 {
-    glewExperimental = GL_TRUE;
-    glutInit(&argc, argv);
-    if(glewIsSupported("GL_VERSION_1_0"))
+    // Initialise GLFW
+    if( !glfwInit() )
     {
-        cout << "ready for shading!" << endl;
+        fprintf( stderr, "Failed to initialize GLFW\n" );
+        return -1;
     }
-    glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowSize(800, 600);
-    glutInitContextVersion(2, 1);
-    glutInitContextProfile(GLUT_CORE_PROFILE);
-    glutCreateWindow("Shader example");
 
-    glutReshapeFunc(resize);
+    glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 
-    glutDisplayFunc(display);
-    glutSpecialFunc(arrow_keys);
-    glutKeyboardFunc(keyboard);
-    glutTimerFunc(25, timer, 0);
-    if(glewInit()){
-        cerr << "unable to init GLEW!" << endl;
-        exit(EXIT_FAILURE);
+    // Open a window and create its OpenGL context
+    window = glfwCreateWindow( 1024, 768, "Tutorial 04 - Colored Cube", NULL, NULL);
+    if( window == NULL ){
+        fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
+        glfwTerminate();
+        return -1;
     }
+    glfwMakeContextCurrent(window);
+
+    // Initialize GLEW
+    glewExperimental = true; // Needed for core profile
+    if (glewInit() != GLEW_OK) {
+        fprintf(stderr, "Failed to initialize GLEW\n");
+        return -1;
+    }
+    // Ensure we can capture the escape key being pressed below
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     init();
-    glutMainLoop();
+    do{
+        display();
+    } // Check if the ESC key was pressed or the window was closed
+    while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
+           glfwWindowShouldClose(window) == 0 );
 
     return 0;
 }
