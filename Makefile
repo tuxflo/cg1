@@ -33,7 +33,7 @@ MOVE          = mv -f
 TAR           = tar -cf
 COMPRESS      = gzip -9f
 DISTNAME      = beleg_11.0.0
-DISTDIR = /home/tuxflo/Programme/CG_alt/beleg_1/.tmp/beleg_11.0.0
+DISTDIR = /home/tuxflo/Programme/CG_alt/.tmp/beleg_11.0.0
 LINK          = g++
 LFLAGS        = 
 LIBS          = $(SUBLIBS) -lGLU -lGL -lglut -lGLEW -lglfw -lX11 -lXxf86vm -lXrandr -lpthread -lXi 
@@ -221,7 +221,8 @@ DIST          = /usr/lib/qt/mkspecs/features/spec_pre.prf \
 		/usr/lib/qt/mkspecs/features/exceptions.prf \
 		/usr/lib/qt/mkspecs/features/yacc.prf \
 		/usr/lib/qt/mkspecs/features/lex.prf \
-		beleg_1.pro controls.h main.cpp \
+		beleg_1.pro LoadShaders.h \
+		controls.h main.cpp \
 		LoadShaders.cpp \
 		controls.cpp
 QMAKE_TARGET  = beleg_1
@@ -702,11 +703,11 @@ main.o: main.cpp vgl.h \
 		glm/glm/gtc/constants.hpp \
 		glm/glm/gtc/constants.inl \
 		glm/glm/gtc/quaternion.inl \
-		glm/glm/gtc/type_ptr.inl
+		glm/glm/gtc/type_ptr.inl \
+		controls.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
-LoadShaders.o: LoadShaders.cpp glew/include/GL/glew.h \
-		LoadShaders.h
+LoadShaders.o: LoadShaders.cpp LoadShaders.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o LoadShaders.o LoadShaders.cpp
 
 controls.o: controls.cpp glm/glm/glm.hpp \
