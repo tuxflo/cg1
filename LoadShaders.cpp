@@ -9,7 +9,7 @@
 #include <iostream>
 
 #define GLEW_STATIC
-#include <glew/include/GL/glew.h>
+#include <GL/glew.h>
 #include "LoadShaders.h"
 
 #ifdef __cplusplus

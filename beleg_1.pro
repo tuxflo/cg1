@@ -12,3 +12,6 @@ OTHER_FILES += \
     vertex.vert \
     fragment.frag
 
+HEADERS += \
+    LoadShaders.h
+
