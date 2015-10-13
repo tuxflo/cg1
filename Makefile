@@ -49,9 +49,11 @@ OBJECTS_DIR   = ./
 ####### Files
 
 SOURCES       = main.cpp \
-		LoadShaders.cpp 
+		LoadShaders.cpp \
+		camera.cpp 
 OBJECTS       = main.o \
-		LoadShaders.o
+		LoadShaders.o \
+		camera.o
 DIST          = /usr/lib/qt/mkspecs/features/spec_pre.prf \
 		/usr/lib/qt/mkspecs/common/unix.conf \
 		/usr/lib/qt/mkspecs/common/linux.conf \
@@ -219,8 +221,10 @@ DIST          = /usr/lib/qt/mkspecs/features/spec_pre.prf \
 		/usr/lib/qt/mkspecs/features/exceptions.prf \
 		/usr/lib/qt/mkspecs/features/yacc.prf \
 		/usr/lib/qt/mkspecs/features/lex.prf \
-		beleg_1.pro LoadShaders.h main.cpp \
-		LoadShaders.cpp
+		beleg_1.pro LoadShaders.h \
+		camera.h main.cpp \
+		LoadShaders.cpp \
+		camera.cpp
 QMAKE_TARGET  = beleg_1
 DESTDIR       = #avoid trailing-slash linebreak
 TARGET        = beleg_1
@@ -699,11 +703,75 @@ main.o: main.cpp vgl.h \
 		glm/glm/gtc/constants.hpp \
 		glm/glm/gtc/constants.inl \
 		glm/glm/gtc/quaternion.inl \
-		glm/glm/gtc/type_ptr.inl
+		glm/glm/gtc/type_ptr.inl \
+		camera.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
 LoadShaders.o: LoadShaders.cpp LoadShaders.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o LoadShaders.o LoadShaders.cpp
+
+camera.o: camera.cpp camera.h \
+		glm/glm/glm.hpp \
+		glm/glm/core/_fixes.hpp \
+		glm/glm/core/setup.hpp \
+		glm/glm/core/_detail.hpp \
+		glm/glm/core/_vectorize.hpp \
+		glm/glm/core/type.hpp \
+		glm/glm/core/type_half.hpp \
+		glm/glm/core/type_half.inl \
+		glm/glm/core/type_float.hpp \
+		glm/glm/core/type_int.hpp \
+		glm/glm/core/type_gentype.hpp \
+		glm/glm/core/type_size.hpp \
+		glm/glm/core/type_vec1.hpp \
+		glm/glm/core/type_vec.hpp \
+		glm/glm/core/_swizzle.hpp \
+		glm/glm/core/_swizzle_func.hpp \
+		glm/glm/core/type_vec1.inl \
+		glm/glm/core/type_vec2.hpp \
+		glm/glm/core/type_vec2.inl \
+		glm/glm/core/type_vec3.hpp \
+		glm/glm/core/type_vec3.inl \
+		glm/glm/core/type_vec4.hpp \
+		glm/glm/core/type_vec4.inl \
+		glm/glm/core/type_mat2x2.hpp \
+		glm/glm/core/type_mat.hpp \
+		glm/glm/core/type_mat2x2.inl \
+		glm/glm/core/type_mat2x3.hpp \
+		glm/glm/core/type_mat2x3.inl \
+		glm/glm/core/type_mat2x4.hpp \
+		glm/glm/core/type_mat2x4.inl \
+		glm/glm/core/type_mat3x2.hpp \
+		glm/glm/core/type_mat3x2.inl \
+		glm/glm/core/type_mat3x3.hpp \
+		glm/glm/core/type_mat3x3.inl \
+		glm/glm/core/type_mat3x4.hpp \
+		glm/glm/core/type_mat3x4.inl \
+		glm/glm/core/type_mat4x2.hpp \
+		glm/glm/core/type_mat4x2.inl \
+		glm/glm/core/type_mat4x3.hpp \
+		glm/glm/core/type_mat4x3.inl \
+		glm/glm/core/type_mat4x4.hpp \
+		glm/glm/core/type_mat4x4.inl \
+		glm/glm/core/func_trigonometric.hpp \
+		glm/glm/core/func_trigonometric.inl \
+		glm/glm/core/func_exponential.hpp \
+		glm/glm/core/func_exponential.inl \
+		glm/glm/core/func_common.hpp \
+		glm/glm/core/func_common.inl \
+		glm/glm/core/func_packing.hpp \
+		glm/glm/core/func_packing.inl \
+		glm/glm/core/func_geometric.hpp \
+		glm/glm/core/func_geometric.inl \
+		glm/glm/core/func_matrix.hpp \
+		glm/glm/core/func_matrix.inl \
+		glm/glm/core/func_vector_relational.hpp \
+		glm/glm/core/func_vector_relational.inl \
+		glm/glm/core/func_integer.hpp \
+		glm/glm/core/func_integer.inl \
+		glm/glm/core/func_noise.hpp \
+		glm/glm/core/func_noise.inl
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o camera.o camera.cpp
 
 ####### Install
 

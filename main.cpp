@@ -5,23 +5,22 @@
 #include "glm/glm/glm.hpp"
 #include "glm/glm/gtc/matrix_transform.hpp"
 #include "glm/glm/gtc/type_ptr.hpp"
+#include "camera.h"
 
 using namespace std;
 
-enum VAO_IDs  { Triangles, Lines, NumVAOs };
-enum Buffer_IDs { ArrayBuffer, NumBuffers };
+
 enum Attrib_IDs { vPosition = 0 };
-
-GLuint VAOs[NumVAOs];
-GLuint Buffers[NumBuffers];
-
+//0 - wheel 1- cube
+GLuint VAOs[2];
 const GLuint Numvertices = 6;
-int x_position = 0;
-int z_position = 5;
-int y_position = 0;
 GLuint program;
 glm::mat4 Model      = glm::mat4(1.0f);  // Changes for each model !
-
+Camera cam;
+static double lastTime;
+GLuint wheelbuffer;
+GLuint wheelarray;
+GLuint cubearray;
 
 void display()
 {
@@ -29,22 +28,30 @@ void display()
     glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glBindVertexArray(VAOs[Triangles]);
 
-    glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
+    //glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
     // Camera matrix
-    glm::mat4 View       = glm::lookAt(
-        glm::vec3(x_position, y_position, z_position), // Camera is at (4,3,3), in World Space
-        glm::vec3(x_position, y_position, 0), // and looks at the origin
-        glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
-    );
-    // Model matrix : an identity matrix (model will be at the origin)
+    cam.calculatePositions();
+    glm::mat4 Projection = cam.getProjectionMatrix();
+    glm::mat4 View  = cam.getViewMatrix();    // Model matrix : an identity matrix (model will be at the origin)
+//    glm::mat4 View = glm::lookAt(
+//                glm::vec3(0, 0, 5), // Camera is at (4,3,3), in World Space
+//                glm::vec3(0, 0, 0), // and looks at the origin
+//                glm::vec3(0,1,0)
+//                );
     // Our ModelViewProjection : multiplication of our 3 matrices
-    glm::mat4 MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
+    glm::mat4 MVP        = Projection * View * glm::translate(glm::mat4(1.0), glm::vec3(3.0, 0.0, 0.0)); // Remember, matrix multiplication is the other way around
 
     GLuint MatrixID = glGetUniformLocation(program, "MVP");
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
+    glBindVertexArray(cubearray);
+     glDrawArrays(GL_TRIANGLES, 0, 12*3);
+
+    MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
+
+    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+    glBindVertexArray(wheelarray);
     //Draw the circle
     glDrawArrays(GL_LINE_LOOP, 0, 1000);
     //Draw the lines
@@ -52,6 +59,12 @@ void display()
 
     glFlush();
     glutSwapBuffers();
+    double currentTime = glutGet(GLUT_ELAPSED_TIME);
+    float deltaTime = float(currentTime - lastTime);
+    cam.setDeltaTime(deltaTime/1000);
+
+    glutPostRedisplay();
+    lastTime = currentTime;
 }
 
 void resize(int w, int h)
@@ -61,6 +74,7 @@ void resize(int w, int h)
 
 void init()
 {
+    lastTime = glutGet(GLUT_ELAPSED_TIME);
     //Load shader files
     ShaderInfo shaders[] = {
         {GL_VERTEX_SHADER, "./vertex.vert" },
@@ -72,7 +86,6 @@ void init()
 
     int amount = 1000;
     glm::vec2 circle_pos[amount*2];
-
     // calc degree to rad: PI / 180°
     int radius = 1.0;
     int count = 1000;
@@ -91,57 +104,95 @@ void init()
         }
         count += 2;
     }
+    static const GLfloat g_vertex_buffer_data[] = {
+        -1.0f,-1.0f,-1.0f, // triangle 1 : begin
+        -1.0f,-1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f, // triangle 1 : end
+        1.0f, 1.0f,-1.0f, // triangle 2 : begin
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f,-1.0f, // triangle 2 : end
+        1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f,-1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f,-1.0f,
+        -1.0f, 1.0f,-1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f
+    };
 
+
+    glGenVertexArrays(1, &wheelarray);
+    //remember the wheel first...
+    glBindVertexArray(wheelarray);
+
+    glGenBuffers(1, &wheelbuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, wheelbuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * 2 * amount,circle_pos, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+
+    //called trigangle but is drawing the cube
+    glGenVertexArrays(1, &cubearray);
+    glBindVertexArray(cubearray);
     GLuint trianglebuffer;
     glGenBuffers(1, &trianglebuffer);
     glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * 2 * amount,circle_pos, GL_STATIC_DRAW);
-
-    glGenVertexArrays(NumVAOs, VAOs);
-    glBindVertexArray(VAOs[Triangles]);
-
-    glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-}
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
-void arrow_keys(int key, int x, int y)
-{
-    switch(key)
-    {
-    case GLUT_KEY_LEFT:
-        x_position -=1;
-        display();
-        break;
-    case GLUT_KEY_RIGHT:
-        x_position += 1;
-        display();
-        break;
-    case GLUT_KEY_UP:
-        y_position += 1;
-        display();
-        break;
-    case GLUT_KEY_DOWN:
-        y_position -= 1;
-        display();
-        break;
-    }
+
+    glutWarpPointer(1024/2, 768/2);
 }
 
 void keyboard(unsigned char key, int x, int y)
 {
     switch(key)
     {
-    case '-':
-        z_position += 1;
-        display();
+    case 'w':
+        cam.up();
         break;
-    case '+':
-        z_position -= 1;
-        display();
+    case 's':
+        cam.down();
+        break;
+    case 'a':
+        cam.left();
+        break;
+    case 'd':
+        cam.right();
         break;
     }
+}
+
+void mouse_func(int x, int y)
+{
+    cam.setPos(x, y);
+    glutPostRedisplay();
 }
 
 void timer(int value)
@@ -160,7 +211,7 @@ int main(int argc, char** argv)
         cout << "ready for shading!" << endl;
     }
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowSize(800, 600);
+    glutInitWindowSize(1024, 768);
     glutInitContextVersion(2, 1);
     glutInitContextProfile(GLUT_CORE_PROFILE);
     glutCreateWindow("Shader example");
@@ -168,9 +219,10 @@ int main(int argc, char** argv)
     glutReshapeFunc(resize);
 
     glutDisplayFunc(display);
-    glutSpecialFunc(arrow_keys);
     glutKeyboardFunc(keyboard);
-    glutTimerFunc(25, timer, 0);
+    glutIdleFunc(display);
+    glutPassiveMotionFunc(mouse_func);
+   glutTimerFunc(25, timer, 0);
     if(glewInit()){
         cerr << "unable to init GLEW!" << endl;
         exit(EXIT_FAILURE);
