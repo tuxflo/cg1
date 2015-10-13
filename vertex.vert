@@ -8,8 +8,10 @@ void main(void)
     if(gl_InstanceID  > 0)
     {
         vec4 position = gl_Vertex;
-        position.x += 5.0;
-        color = vec4(1.0, 1.0, 0.0, 1.0);
+        position.z += 3.0 * gl_InstanceID;
+        position.x += 3.0 * gl_InstanceID;
+
+        color = vec4(0.0, 0.0, 1.0, 1.0);
         gl_Position = MVP * position;
     }
     else

@@ -7,56 +7,66 @@
 #include "glm/glm/gtc/type_ptr.hpp"
 #include "camera.h"
 
+#define DEPTH 32
+#define NUM_VERTICES (DEPTH+1)*(DEPTH+1)
+#define NUM_INDICES 2*3*DEPTH*DEPTH
+
 using namespace std;
 
 
 enum Attrib_IDs { vPosition = 0 };
 //0 - wheel 1- cube
-GLuint VAOs[2];
+enum VAO_IDs {wheel, cube, grid};
+// Number of VAOs: 3
+GLuint VAOs[3];
 const GLuint Numvertices = 6;
 GLuint program;
-glm::mat4 Model      = glm::mat4(1.0f);  // Changes for each model !
+glm::mat4 Wheel_Model      = glm::mat4(1.0f);  // Changes for each model !
+glm::mat4 Cube_Model = glm::mat4(1.0);
 Camera cam;
 static double lastTime;
 GLuint wheelbuffer;
 GLuint wheelarray;
 GLuint cubearray;
 
+void create_wheel(float radius);
+void create_cube();
+void create_grid();
+
 void display()
 {
-
+    //white background
     glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-
-    //glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
     // Camera matrix
     cam.calculatePositions();
     glm::mat4 Projection = cam.getProjectionMatrix();
     glm::mat4 View  = cam.getViewMatrix();    // Model matrix : an identity matrix (model will be at the origin)
-//    glm::mat4 View = glm::lookAt(
-//                glm::vec3(0, 0, 5), // Camera is at (4,3,3), in World Space
-//                glm::vec3(0, 0, 0), // and looks at the origin
-//                glm::vec3(0,1,0)
-//                );
-    // Our ModelViewProjection : multiplication of our 3 matrices
-    glm::mat4 MVP        = Projection * View * glm::translate(glm::mat4(1.0), glm::vec3(3.0, 0.0, 0.0)); // Remember, matrix multiplication is the other way around
+    glm::mat4 MVP        = Projection * View * Wheel_Model;
 
+    //pass updated model to the shader (wheel)
     GLuint MatrixID = glGetUniformLocation(program, "MVP");
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
-    glBindVertexArray(cubearray);
-     glDrawArrays(GL_TRIANGLES, 0, 12*3);
-
-    MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
-
-    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-    glBindVertexArray(wheelarray);
+    glBindVertexArray(VAOs[wheel]);
     //Draw the circle
     glDrawArrays(GL_LINE_LOOP, 0, 1000);
     //Draw the lines
     glDrawArrays(GL_LINES, 1000, 1000);
 
+    glBindVertexArray(VAOs[cube]);
+
+    Cube_Model = glm::translate(glm::mat4(1.0), glm::vec3(3.0, 0.0, 0.0));
+    MVP = Projection * View * Cube_Model; // Remember, matrix multiplication is the other way around
+
+    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+    glDrawArrays(GL_TRIANGLES, 0, 12*3);
+
+    glBindVertexArray(VAOs[grid]);
+    MVP = Projection * View * glm::mat4(1.0); // Remember, matrix multiplication is the other way around
+    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+
+    glDrawElements (GL_TRIANGLES, NUM_INDICES, GL_UNSIGNED_INT, NULL);
     glFlush();
     glutSwapBuffers();
     double currentTime = glutGet(GLUT_ELAPSED_TIME);
@@ -84,26 +94,35 @@ void init()
     program = LoadShaders(shaders);
     glUseProgram(program);
 
-    int amount = 1000;
-    glm::vec2 circle_pos[amount*2];
-    // calc degree to rad: PI / 180°
-    int radius = 1.0;
-    int count = 1000;
-    for( int i =0; i <= amount; i++ )
-    {
-        float twicePI = 2*M_PI;
-        circle_pos[i].x += cos((float)i * twicePI/amount)*radius;
-        circle_pos[i].y += sin((float)i * twicePI/amount)*radius;
-        if(count < 2000)
-        {
-            circle_pos[count].x -= cos((float)i * twicePI/25)*radius;
-            circle_pos[count].y -= sin((float)i * twicePI/25)*radius;;
 
-            circle_pos[count+1].x += cos((float)i * twicePI/25)*radius;
-            circle_pos[count+1].y += sin((float)i * twicePI/25)*radius;
-        }
-        count += 2;
+    create_wheel(2.0);
+    create_cube();
+    create_grid();
+
+    glutWarpPointer(1024/2, 768/2);
+}
+
+void keyboard(unsigned char key, int x, int y)
+{
+    switch(key)
+    {
+    case 'w':
+        cam.up();
+        break;
+    case 's':
+        cam.down();
+        break;
+    case 'a':
+        cam.left();
+        break;
+    case 'd':
+        cam.right();
+        break;
     }
+}
+
+void create_cube()
+{
     static const GLfloat g_vertex_buffer_data[] = {
         -1.0f,-1.0f,-1.0f, // triangle 1 : begin
         -1.0f,-1.0f, 1.0f,
@@ -143,21 +162,9 @@ void init()
         1.0f,-1.0f, 1.0f
     };
 
-
-    glGenVertexArrays(1, &wheelarray);
-    //remember the wheel first...
-    glBindVertexArray(wheelarray);
-
-    glGenBuffers(1, &wheelbuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, wheelbuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * 2 * amount,circle_pos, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
-
     //called trigangle but is drawing the cube
-    glGenVertexArrays(1, &cubearray);
-    glBindVertexArray(cubearray);
+    glGenVertexArrays(1, &VAOs[cube]);
+    glBindVertexArray(VAOs[cube]);
     GLuint trianglebuffer;
     glGenBuffers(1, &trianglebuffer);
     glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
@@ -165,28 +172,88 @@ void init()
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
-
-
-    glutWarpPointer(1024/2, 768/2);
 }
 
-void keyboard(unsigned char key, int x, int y)
+void create_wheel(float radius)
 {
-    switch(key)
+    int amount = 1000;
+    glm::vec2 circle_pos[amount*2];
+    // calc degree to rad: PI / 180°
+    int count = 1000;
+    for( int i =0; i <= amount; i++ )
     {
-    case 'w':
-        cam.up();
-        break;
-    case 's':
-        cam.down();
-        break;
-    case 'a':
-        cam.left();
-        break;
-    case 'd':
-        cam.right();
-        break;
+        float twicePI = 2*M_PI;
+        circle_pos[i].x += cos((float)i * twicePI/amount)*radius;
+        circle_pos[i].y += sin((float)i * twicePI/amount)*radius;
+        if(count < 2000)
+        {
+            circle_pos[count].x -= cos((float)i * twicePI/25)*radius;
+            circle_pos[count].y -= sin((float)i * twicePI/25)*radius;;
+
+            circle_pos[count+1].x += cos((float)i * twicePI/25)*radius;
+            circle_pos[count+1].y += sin((float)i * twicePI/25)*radius;
+        }
+        count += 2;
     }
+     glGenVertexArrays(1, &VAOs[wheel]);
+     glBindVertexArray(VAOs[wheel]);
+     GLuint wheelbuffer;
+     glGenBuffers(1, &wheelbuffer);
+     glBindBuffer(GL_ARRAY_BUFFER, wheelbuffer);
+     glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * 2 * amount,circle_pos, GL_STATIC_DRAW);
+     glEnableVertexAttribArray(0);
+     glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+}
+
+void create_grid()
+{
+    //loop for vertex creation
+    GLfloat vertices[3*NUM_VERTICES];
+    int count = 0;
+
+    for (int y = 0; y < DEPTH+1; ++y)
+    {
+        for (int x = 0; x < DEPTH+1; ++x)
+        {
+            vertices[count++] = (x - (float)(DEPTH/2))/DEPTH;
+            vertices[count++] = (y - (float)(DEPTH/2))/DEPTH;
+            vertices[count++] = 0.0f;
+        }
+    }
+
+    GLuint indices[NUM_INDICES];
+    count = 0;
+
+    //loop for index creation
+    for (int i = 0; i < DEPTH; ++i)
+    {
+        for (int start = ((DEPTH*i)+i)+1; start < ((DEPTH*i)+i)+DEPTH+1; ++start)
+        {
+            indices[count++]=start;
+            indices[count++]=start+DEPTH;
+            indices[count++]=start-1;
+
+            indices[count++]=start;
+            indices[count++]=start+DEPTH+1;
+            indices[count++]=start+DEPTH;
+        }
+    }
+    glGenVertexArrays(1, &VAOs[grid]);
+    glBindVertexArray(VAOs[grid]);
+    GLuint gridbuffer;
+    glGenBuffers(1, &gridbuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, gridbuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, NUM_INDICES*sizeof(GLuint), indices, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, 3*NUM_VERTICES*sizeof(GLfloat), vertices);
+
+    GLuint indexBufferID;
+    glGenBuffers(1, &indexBufferID);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferID);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, NUM_INDICES*sizeof(GLuint), indices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    //glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+
 }
 
 void mouse_func(int x, int y)
@@ -197,7 +264,7 @@ void mouse_func(int x, int y)
 
 void timer(int value)
 {
-    Model = glm::rotate(Model, -0.3f, glm::vec3(0.0f, 0.0f, 1.0f));
+    Wheel_Model = glm::rotate(Wheel_Model, -0.3f, glm::vec3(0.0f, 0.0f, 1.0f));
     glutPostRedisplay();
     glutTimerFunc(25,timer,0);
 }
