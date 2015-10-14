@@ -7,6 +7,8 @@ Camera::Camera()
     _verticalAngle = 0.0;
     _initialFoV = 45.0f;
      _position = glm::vec3( 0, 0, 5 );
+     _right = glm::vec3(0.0);
+     _direction = glm::vec3(0.0);
      _mouseSpeed = 0.004f;
      _speed = 5.0f;
     _ViewMatrix =  glm::lookAt(

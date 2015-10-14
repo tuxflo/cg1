@@ -66,7 +66,8 @@ void display()
     MVP = Projection * View * glm::mat4(1.0); // Remember, matrix multiplication is the other way around
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
-    glDrawElements (GL_TRIANGLES, NUM_INDICES, GL_UNSIGNED_INT, NULL);
+    //glDrawArrays(GL_TRIANGLES, 0, 3*2);
+
     glFlush();
     glutSwapBuffers();
     double currentTime = glutGet(GLUT_ELAPSED_TIME);
@@ -207,53 +208,23 @@ void create_wheel(float radius)
 
 void create_grid()
 {
-    //loop for vertex creation
-    GLfloat vertices[3*NUM_VERTICES];
-    int count = 0;
-
-    for (int y = 0; y < DEPTH+1; ++y)
-    {
-        for (int x = 0; x < DEPTH+1; ++x)
-        {
-            vertices[count++] = (x - (float)(DEPTH/2))/DEPTH;
-            vertices[count++] = (y - (float)(DEPTH/2))/DEPTH;
-            vertices[count++] = 0.0f;
-        }
-    }
-
-    GLuint indices[NUM_INDICES];
-    count = 0;
-
-    //loop for index creation
-    for (int i = 0; i < DEPTH; ++i)
-    {
-        for (int start = ((DEPTH*i)+i)+1; start < ((DEPTH*i)+i)+DEPTH+1; ++start)
-        {
-            indices[count++]=start;
-            indices[count++]=start+DEPTH;
-            indices[count++]=start-1;
-
-            indices[count++]=start;
-            indices[count++]=start+DEPTH+1;
-            indices[count++]=start+DEPTH;
-        }
-    }
+    static const GLfloat g_vertex_buffer_data[] = {
+        -100.0f,0.0f,100.0f, // triangle 1 : begin
+        100.0f,0.0f, 100.0f,
+        -100.0f, 0.0f, -100.0f, // triangle 1 : end
+        -100.0f, 0.0f,-100.0f, // triangle 2 : begin
+        100.0f, 0.0f,-100.0f,
+        100.0f, 0.0f,100.0f, // triangle 2 : end
+    };
     glGenVertexArrays(1, &VAOs[grid]);
     glBindVertexArray(VAOs[grid]);
-    GLuint gridbuffer;
-    glGenBuffers(1, &gridbuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, gridbuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, NUM_INDICES*sizeof(GLuint), indices, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, 3*NUM_VERTICES*sizeof(GLfloat), vertices);
+    GLuint trianglebuffer;
+    glGenBuffers(1, &trianglebuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
-    GLuint indexBufferID;
-    glGenBuffers(1, &indexBufferID);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferID);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, NUM_INDICES*sizeof(GLuint), indices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    //glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
-
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 }
 
 void mouse_func(int x, int y)
