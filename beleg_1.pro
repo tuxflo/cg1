@@ -7,7 +7,8 @@ LIBS += -lGLU -lGL -lglut -lGLEW
 
 SOURCES += main.cpp \
     LoadShaders.cpp \
-    camera.cpp
+    camera.cpp \
+    triangle.cpp
 
 OTHER_FILES += \
     vertex.vert \
@@ -15,5 +16,6 @@ OTHER_FILES += \
 
 HEADERS += \
     LoadShaders.h \
-    camera.h
+    camera.h \
+    triangle.h
 

@@ -50,10 +50,12 @@ OBJECTS_DIR   = ./
 
 SOURCES       = main.cpp \
 		LoadShaders.cpp \
-		camera.cpp 
+		camera.cpp \
+		triangle.cpp 
 OBJECTS       = main.o \
 		LoadShaders.o \
-		camera.o
+		camera.o \
+		triangle.o
 DIST          = /usr/lib/qt/mkspecs/features/spec_pre.prf \
 		/usr/lib/qt/mkspecs/common/unix.conf \
 		/usr/lib/qt/mkspecs/common/linux.conf \
@@ -222,9 +224,11 @@ DIST          = /usr/lib/qt/mkspecs/features/spec_pre.prf \
 		/usr/lib/qt/mkspecs/features/yacc.prf \
 		/usr/lib/qt/mkspecs/features/lex.prf \
 		beleg_1.pro LoadShaders.h \
-		camera.h main.cpp \
+		camera.h \
+		triangle.h main.cpp \
 		LoadShaders.cpp \
-		camera.cpp
+		camera.cpp \
+		triangle.cpp
 QMAKE_TARGET  = beleg_1
 DESTDIR       = #avoid trailing-slash linebreak
 TARGET        = beleg_1
@@ -774,6 +778,9 @@ camera.o: camera.cpp camera.h \
 		glm/glm/gtc/matrix_transform.hpp \
 		glm/glm/gtc/matrix_transform.inl
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o camera.o camera.cpp
+
+triangle.o: triangle.cpp triangle.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o triangle.o triangle.cpp
 
 ####### Install
 

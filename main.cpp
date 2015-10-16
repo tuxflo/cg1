@@ -16,7 +16,7 @@ using namespace std;
 
 enum Attrib_IDs { vPosition = 0 };
 //0 - wheel 1- cube
-enum VAO_IDs {wheel, cube, grid};
+enum VAO_IDs {wheel, cube, grid, normal};
 // Number of VAOs: 3
 GLuint VAOs[3];
 const GLuint Numvertices = 6;
@@ -49,15 +49,19 @@ void display()
     GLuint MatrixID = glGetUniformLocation(program, "MVP");
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
+    //Access Light uniform
+    GLuint ambientLightID = glGetUniformLocation(program, "ambientLight");
+    glm::vec3 ambientLight = glm::vec3(0.3, 0.3, 0.3);
+    glUniform3fv(ambientLightID, 1, &ambientLight[0]);
     glBindVertexArray(VAOs[cube]);
 
-
+    //Draw the cube
     glDrawArrays(GL_TRIANGLES, 0, 12*3);
 
     glBindVertexArray(VAOs[grid]);
     MVP = Projection * View * glm::mat4(1.0);
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    //glDrawArrays(GL_TRIANGLES, 0, 6);
 
     glFlush();
     glutSwapBuffers();
@@ -89,13 +93,13 @@ void init()
         {GL_NONE, NULL}
     };
     program = LoadShaders(shaders);
-    glUseProgram(program);
 
 
-    create_wheel(2.0);
+//    create_wheel(2.0);
     create_cube(shaders[0].shader);
-    create_grid(shaders[0].shader);
+   // create_grid(shaders[0].shader);
 
+    glUseProgram(program);
     glutWarpPointer(1024/2, 768/2);
 }
 
@@ -124,6 +128,7 @@ void create_cube(GLuint MyShader)
         -1.0f,-1.0f,-1.0f, // triangle 1 : begin
         -1.0f,-1.0f, 1.0f,
         -1.0f, 1.0f, 1.0f, // triangle 1 : end
+
         1.0f, 1.0f,-1.0f, // triangle 2 : begin
         -1.0f,-1.0f,-1.0f,
         -1.0f, 1.0f,-1.0f, // triangle 2 : end
@@ -159,6 +164,9 @@ void create_cube(GLuint MyShader)
         1.0f,-1.0f, 1.0f
     };
 
+GLuint posLoc = glGetAttribLocation(1, "pos");
+GLuint colorLoc = glGetAttribLocation(1, "Incolor");
+GLuint normalLoc = glGetAttribLocation(1, "normal");
     //called trigangle but is drawing the cube
     glGenVertexArrays(1, &VAOs[cube]);
     glBindVertexArray(VAOs[cube]);
@@ -167,8 +175,7 @@ void create_cube(GLuint MyShader)
     glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+    glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
     // One color for each vertex. They were generated randomly.
     static const GLfloat g_color_buffer_data[] = {
@@ -216,10 +223,9 @@ void create_cube(GLuint MyShader)
     glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data), g_color_buffer_data, GL_STATIC_DRAW);
 
     // 2nd attribute buffer : colors
-    glEnableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
     glVertexAttribPointer(
-        1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+        colorLoc,                                // attribute. No particular reason for 1, but must match the layout in the shader.
         3,                                // size
         GL_FLOAT,                         // type
         GL_FALSE,                         // normalized?
@@ -227,8 +233,73 @@ void create_cube(GLuint MyShader)
         (void*)0                          // array buffer offset
     );
 
-    glBindAttribLocation(MyShader, 0, "pos");
-    glBindAttribLocation(MyShader, 1, "Incolor");
+    static const GLfloat g_normal_buffer_data[] = {
+        -1.0f, 0.0f,0.0f, // side 2
+        -1.0f, 0.0f, 0.0f,
+        -1.0f, 0.0f, 0.0f,
+
+        0.0f,0.0f, -1.0f, //side 1
+        0.0f,0.0f, -1.0f,
+        0.0f,0.0f, -1.0f,
+
+        0.0f, 0.0f, 1.0f, //side 3
+        0.0f, 0.0f, 1.0f,
+        0.0f, 0.0f, 1.0f,
+
+        0.0f,0.0f, -1.0f,//side 1
+        0.0f,0.0f, -1.0f,
+        0.0f,0.0f, -1.0f,
+
+        -1.0f, 0.0f, 0.0f,// side 2
+        -1.0f, 0.0f, 0.0f,
+        -1.0f, 0.0f, 0.0f,
+
+        0.0f, 0.0f, 1.0f,//side 3
+        0.0f, 0.0f, 1.0f,
+        0.0f, 0.0f, 1.0f,
+
+        1.0f, 1.0f, 0.0f,//side 4
+        1.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 0.0f,
+
+        0.0f, 1.0f, 1.0f,//side 5
+        0.0f, 1.0f, 1.0f,
+        0.0f, 1.0f, 1.0f,
+
+        0.0f, 1.0f, 1.0f,//side 5
+        0.0f, 1.0f, 1.0f,
+        0.0f, 1.0f, 1.0f,
+
+        0.0f, 0.0f, 0.0f,//side 6
+        0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f,
+
+        0.0f, 0.0f, 0.0f,//side 6
+        0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f,
+
+        1.0f, 1.0f, 0.0f,//side 4
+        1.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 0.0f,
+    };
+
+
+    GLuint normalbuffer;
+    glGenBuffers(1, &normalbuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(g_normal_buffer_data), g_normal_buffer_data, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(
+        normalLoc,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+        3,                                // size
+        GL_FLOAT,                         // type
+        GL_FALSE,                         // normalized?
+        0,                                // stride
+        (void*)0                          // array buffer offset
+    );
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
 }
 
 void create_wheel(float radius)
@@ -299,8 +370,6 @@ void create_grid(GLuint MyShader)
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
-    glBindAttribLocation(MyShader, 0, "pos");
-    glBindAttribLocation(MyShader, 1, "Incolor");
 }
 
 void mouse_func(int x, int y)
