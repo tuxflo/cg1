@@ -8,7 +8,7 @@
 class Camera
 {
 public:
-    Camera();
+    Camera(bool stat);
     glm::mat4 getProjectionMatrix();
     glm::mat4 getViewMatrix();
     void calculatePositions();
@@ -18,6 +18,7 @@ public:
     void right();
     void setPos(int x, int y);
     float setDeltaTime(float delta);
+    glm::vec3 getPosition();
 private:
     glm::mat4 _ProjectionMatrix;
     glm::mat4 _ViewMatrix;
@@ -38,6 +39,7 @@ private:
     int _xpos;
     int _ypos;
     float _deltaTime;
+    bool _isStatic;
 };
 
 #endif // CAMERA_H

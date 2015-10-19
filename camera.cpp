@@ -1,6 +1,7 @@
 #include "camera.h"
 
-Camera::Camera()
+Camera::Camera(bool stat)
+    : _isStatic(stat)
 {
     _lastTime = 0;
     _horizontalAngle = 3.14;
@@ -19,11 +20,22 @@ Camera::Camera()
 
 glm::mat4 Camera::getProjectionMatrix()
 {
+    if(_isStatic)
+        return glm::perspective(_initialFoV, 4.0f / 3.0f, 0.1f, 100.0f);
     return _ProjectionMatrix;
 }
 
 glm::mat4 Camera::getViewMatrix()
 {
+    if(_isStatic)
+    {
+        glm::mat4 View = glm::lookAt(
+                   glm::vec3(5,5,5),
+                   glm::vec3(0,0,0),
+                   glm::vec3(0,1,0)
+                            );
+        return View;
+    }
     return _ViewMatrix;
 }
 
@@ -56,7 +68,6 @@ void Camera::calculatePositions()
 
 void Camera::up()
 {
-
    _position += _direction * _deltaTime * _speed;
    glutPostRedisplay();
 }
@@ -91,5 +102,10 @@ void Camera::setPos(int x, int y)
 float Camera::setDeltaTime(float delta)
 {
     _deltaTime = delta;
+}
+
+glm::vec3 Camera::getPosition()
+{
+    return _position;
 }
 

@@ -6,6 +6,7 @@
 #include "glm/glm/gtc/matrix_transform.hpp"
 #include "glm/glm/gtc/type_ptr.hpp"
 #include "camera.h"
+#include "triangle.h"
 
 #define DEPTH 32
 #define NUM_VERTICES (DEPTH+1)*(DEPTH+1)
@@ -23,7 +24,9 @@ const GLuint Numvertices = 6;
 GLuint program;
 glm::mat4 Wheel_Model      = glm::mat4(1.0f);  // Changes for each model !
 glm::mat4 Cube_Model = glm::mat4(1.0);
-Camera cam;
+Camera *cam;
+Camera static_cam(true);
+Camera fps_cam(false);
 static double lastTime;
 GLuint wheelbuffer;
 GLuint wheelarray;
@@ -39,15 +42,23 @@ void display()
     glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // Camera matrix
-    cam.calculatePositions();
-    glm::mat4 Projection = cam.getProjectionMatrix();
-    glm::mat4 View  = cam.getViewMatrix();    // Model matrix : an identity matrix (model will be at the origin)
-    Cube_Model = glm::translate(glm::mat4(1.0), glm::vec3(0.0, 1.5, 0.0));
-    glm::mat4 MVP        = Projection * View * Cube_Model;
+    cam->calculatePositions();
+    glm::mat4 Projection = cam->getProjectionMatrix();
+    glm::mat4 View  = cam->getViewMatrix();    // Model matrix : an identity matrix (model will be at the origin)
+    //Cube_Model = glm::translate(glm::mat4(1.0), glm::vec3(0.0, 1.5, 0.0));
+    glm::mat4 MVP        = Projection * View * glm::mat4(1.0);
 
     //pass updated model to the shader (wheel)
     GLuint MatrixID = glGetUniformLocation(program, "MVP");
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+
+    GLuint lightUni = glGetUniformLocation(program, "lightPos");
+    glm::vec3 light_position = glm::vec3(0.0, 3.0, 1.0);
+    glUniformMatrix3fv(lightUni, 1, GL_FALSE, &light_position[0]);
+
+    GLuint lightPosUni = glGetUniformLocation(program, "eyedirection");
+    glm::vec3 tmp = cam->getPosition();
+    glUniformMatrix3fv(lightPosUni, 1, GL_FALSE,  &tmp[0]);
 
     //Access Light uniform
     GLuint ambientLightID = glGetUniformLocation(program, "ambientLight");
@@ -67,7 +78,7 @@ void display()
     glutSwapBuffers();
     double currentTime = glutGet(GLUT_ELAPSED_TIME);
     float deltaTime = float(currentTime - lastTime);
-    cam.setDeltaTime(deltaTime/1000);
+    cam->setDeltaTime(deltaTime/1000);
 
     glutPostRedisplay();
     lastTime = currentTime;
@@ -80,6 +91,7 @@ void resize(int w, int h)
 
 void init()
 {
+    cam = &fps_cam;
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
     // Accept fragment if it closer to the camera than the former one
@@ -108,72 +120,102 @@ void keyboard(unsigned char key, int x, int y)
     switch(key)
     {
     case 'w':
-        cam.up();
+        cam->up();
         break;
     case 's':
-        cam.down();
+        cam->down();
         break;
     case 'a':
-        cam.left();
+        cam->left();
         break;
     case 'd':
-        cam.right();
+        cam->right();
+        break;
+    case '1':
+        std::cout << "switching to static camera" << std::endl;
+        cam = &static_cam;
+        break;
+    case '2':
+        std::cout << "switching to fps camera" << std::endl;
+        cam = &fps_cam;
         break;
     }
 }
 
 void create_cube(GLuint MyShader)
 {
-    static const GLfloat g_vertex_buffer_data[] = {
-        -1.0f,-1.0f,-1.0f, // triangle 1 : begin
-        -1.0f,-1.0f, 1.0f,
-        -1.0f, 1.0f, 1.0f, // triangle 1 : end
+    Triangle cubeVertices[12];
+    cubeVertices[0] = Triangle(
+                glm::vec3(-1.0f,-1.0f,-1.0f), // triangle 1 : begin
+                glm::vec3(-1.0f,-1.0f, 1.0f),
+                glm::vec3(-1.0f, 1.0f, 1.0f)
+                );
+    cubeVertices[1] = Triangle(
+                glm::vec3(1.0f, 1.0f,-1.0f), // triangle 1 : begin
+                glm::vec3(-1.0f,-1.0f,-1.0f),
+                glm::vec3(-1.0f, 1.0f,-1.0f)
+                );
+    cubeVertices[2] = Triangle(
+                glm::vec3(1.0f,-1.0f, 1.0f), // triangle 1 : begin
+                glm::vec3(-1.0f,-1.0f,-1.0f),
+                glm::vec3(1.0f,-1.0f,-1.0f)
+                );
+    cubeVertices[3] = Triangle(
+                glm::vec3(1.0f, 1.0f,-1.0f), // triangle 1 : begin
+                glm::vec3(1.0f,-1.0f,-1.0f),
+                glm::vec3(-1.0f,-1.0f,-1.0f)
+                );
+    cubeVertices[4] = Triangle(
+                glm::vec3(-1.0f,-1.0f,-1.0f), // triangle 1 : begin
+                glm::vec3(-1.0f, 1.0f, 1.0f),
+                glm::vec3(-1.0f, 1.0f,-1.0f)
+                );
+    cubeVertices[5] = Triangle(
+                glm::vec3(1.0f,-1.0f, 1.0f), // triangle 1 : begin
+                glm::vec3(-1.0f,-1.0f, 1.0f),
+                glm::vec3(-1.0f,-1.0f,-1.0f)
+                );
+    cubeVertices[6] = Triangle(
+                glm::vec3(-1.0f, 1.0f, 1.0f), // triangle 1 : begin
+                glm::vec3(-1.0f,-1.0f, 1.0f),
+                glm::vec3(1.0f,-1.0f, 1.0f)
+                );
+    cubeVertices[7] = Triangle(
+                glm::vec3(1.0f, 1.0f, 1.0f), // triangle 1 : begin
+                glm::vec3(1.0f,-1.0f,-1.0f),
+                glm::vec3(1.0f, 1.0f,-1.0f)
+                );
+    cubeVertices[8] = Triangle(
+                glm::vec3(1.0f,-1.0f,-1.0f), // triangle 1 : begin
+                glm::vec3(1.0f, 1.0f, 1.0f),
+                glm::vec3(1.0f,-1.0f, 1.0f)
+                );
+    cubeVertices[9] = Triangle(
+                glm::vec3(1.0f, 1.0f, 1.0f), // triangle 1 : begin
+                glm::vec3(1.0f, 1.0f,-1.0f),
+                glm::vec3(-1.0f, 1.0f,-1.0f)
+                );
+    cubeVertices[10] = Triangle(
+                glm::vec3(1.0f, 1.0f, 1.0f), // triangle 1 : begin
+                glm::vec3(-1.0f, 1.0f,-1.0f),
+                glm::vec3(-1.0f, 1.0f, 1.0f)
+                );
+    cubeVertices[11] = Triangle(
+                glm::vec3(1.0f, 1.0f, 1.0f), // triangle 1 : begin
+                glm::vec3(-1.0f, 1.0f, 1.0),
+                glm::vec3(1.0f,-1.0f, 1.0f)
+                );
 
-        1.0f, 1.0f,-1.0f, // triangle 2 : begin
-        -1.0f,-1.0f,-1.0f,
-        -1.0f, 1.0f,-1.0f, // triangle 2 : end
-        1.0f,-1.0f, 1.0f,
-        -1.0f,-1.0f,-1.0f,
-        1.0f,-1.0f,-1.0f,
-        1.0f, 1.0f,-1.0f,
-        1.0f,-1.0f,-1.0f,
-        -1.0f,-1.0f,-1.0f,
-        -1.0f,-1.0f,-1.0f,
-        -1.0f, 1.0f, 1.0f,
-        -1.0f, 1.0f,-1.0f,
-        1.0f,-1.0f, 1.0f,
-        -1.0f,-1.0f, 1.0f,
-        -1.0f,-1.0f,-1.0f,
-        -1.0f, 1.0f, 1.0f,
-        -1.0f,-1.0f, 1.0f,
-        1.0f,-1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f,-1.0f,-1.0f,
-        1.0f, 1.0f,-1.0f,
-        1.0f,-1.0f,-1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f,-1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f,-1.0f,
-        -1.0f, 1.0f,-1.0f,
-        1.0f, 1.0f, 1.0f,
-        -1.0f, 1.0f,-1.0f,
-        -1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        -1.0f, 1.0f, 1.0f,
-        1.0f,-1.0f, 1.0f
-    };
-
-GLuint posLoc = glGetAttribLocation(1, "pos");
-GLuint colorLoc = glGetAttribLocation(1, "Incolor");
-GLuint normalLoc = glGetAttribLocation(1, "normal");
+    GLuint posLoc = glGetAttribLocation(1, "pos");
+    GLuint colorLoc = glGetAttribLocation(1, "Incolor");
+    GLuint normalLoc = glGetAttribLocation(1, "normal");
     //called trigangle but is drawing the cube
     glGenVertexArrays(1, &VAOs[cube]);
     glBindVertexArray(VAOs[cube]);
     GLuint trianglebuffer;
     glGenBuffers(1, &trianglebuffer);
     glBindBuffer(GL_ARRAY_BUFFER, trianglebuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
@@ -225,64 +267,19 @@ GLuint normalLoc = glGetAttribLocation(1, "normal");
     // 2nd attribute buffer : colors
     glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
     glVertexAttribPointer(
-        colorLoc,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-        3,                                // size
-        GL_FLOAT,                         // type
-        GL_FALSE,                         // normalized?
-        0,                                // stride
-        (void*)0                          // array buffer offset
-    );
+                colorLoc,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+                3,                                // size
+                GL_FLOAT,                         // type
+                GL_FALSE,                         // normalized?
+                0,                                // stride
+                (void*)0                          // array buffer offset
+                );
 
-    static const GLfloat g_normal_buffer_data[] = {
-        -1.0f, 0.0f,0.0f, // side 2
-        -1.0f, 0.0f, 0.0f,
-        -1.0f, 0.0f, 0.0f,
-
-        0.0f,0.0f, -1.0f, //side 1
-        0.0f,0.0f, -1.0f,
-        0.0f,0.0f, -1.0f,
-
-        0.0f, 0.0f, 1.0f, //side 3
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-
-        0.0f,0.0f, -1.0f,//side 1
-        0.0f,0.0f, -1.0f,
-        0.0f,0.0f, -1.0f,
-
-        -1.0f, 0.0f, 0.0f,// side 2
-        -1.0f, 0.0f, 0.0f,
-        -1.0f, 0.0f, 0.0f,
-
-        0.0f, 0.0f, 1.0f,//side 3
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-
-        1.0f, 1.0f, 0.0f,//side 4
-        1.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
-
-        0.0f, 1.0f, 1.0f,//side 5
-        0.0f, 1.0f, 1.0f,
-        0.0f, 1.0f, 1.0f,
-
-        0.0f, 1.0f, 1.0f,//side 5
-        0.0f, 1.0f, 1.0f,
-        0.0f, 1.0f, 1.0f,
-
-        0.0f, 0.0f, 0.0f,//side 6
-        0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f,
-
-        0.0f, 0.0f, 0.0f,//side 6
-        0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f,
-
-        1.0f, 1.0f, 0.0f,//side 4
-        1.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
-    };
-
+    glm::vec3 g_normal_buffer_data[12];
+    for(int i=0; i<11;i++)
+    {
+        g_normal_buffer_data[i] = cubeVertices[i].getNormal();
+    }
 
     GLuint normalbuffer;
     glGenBuffers(1, &normalbuffer);
@@ -290,13 +287,13 @@ GLuint normalLoc = glGetAttribLocation(1, "normal");
     glBufferData(GL_ARRAY_BUFFER, sizeof(g_normal_buffer_data), g_normal_buffer_data, GL_STATIC_DRAW);
 
     glVertexAttribPointer(
-        normalLoc,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-        3,                                // size
-        GL_FLOAT,                         // type
-        GL_FALSE,                         // normalized?
-        0,                                // stride
-        (void*)0                          // array buffer offset
-    );
+                normalLoc,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+                3,                                // size
+                GL_FLOAT,                         // type
+                GL_FALSE,                         // normalized?
+                0,                                // stride
+                (void*)0                          // array buffer offset
+                );
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
@@ -374,7 +371,7 @@ void create_grid(GLuint MyShader)
 
 void mouse_func(int x, int y)
 {
-    cam.setPos(x, y);
+    cam->setPos(x, y);
     glutPostRedisplay();
 }
 
