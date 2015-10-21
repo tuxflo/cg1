@@ -45,43 +45,31 @@ void display()
     cam->calculatePositions();
     glm::mat4 Projection = cam->getProjectionMatrix();
     glm::mat4 View  = cam->getViewMatrix();    // Model matrix : an identity matrix (model will be at the origin)
-    //Cube_Model = glm::translate(glm::mat4(1.0), glm::vec3(0.0, 1.5, 0.0));
-    glm::mat4 MVP        = Projection * View * glm::mat4(1.0);
+    Cube_Model = glm::translate(glm::mat4(1.0), glm::vec3(0.0, 1.0, 0.0));
+    glm::mat4 MVP        = Projection * View * Cube_Model;
 
     //pass updated model to the shader (wheel)
     GLuint MatrixID = glGetUniformLocation(program, "MVP");
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
     //pass Model Matrix to shader
-    GLuint M_ID = glGetUniformLocation(program, "M");
-    glUniformMatrix4fv(M_ID, 1, GL_FALSE, &Cube_Model[0][0]);
+    GLuint MV_ID = glGetUniformLocation(program, "MV");
+    glm::mat4 MV = View;
+    glUniformMatrix4fv(MV_ID, 1, GL_FALSE, &MV[0][0]);
 
-    //pass View Matrix to shader
-    GLuint V_ID = glGetUniformLocation(program, "camera");
-    glm::mat4 camera = Projection * View;
-    glUniformMatrix4fv(V_ID, 1, GL_FALSE, &camera[0][0]);
-
-    //pass Projection Matrix to shader
-    GLuint P_ID = glGetUniformLocation(program, "P");
-    glUniformMatrix4fv(P_ID, 1, GL_FALSE, &Projection[0][0]);
-
-    GLuint lightUni = glGetUniformLocation(program, "LightPosition_worldspace" );
-    glm::vec3 light_position = glm::vec3(0.0, 40.0, 0.0);
+    GLuint lightUni = glGetUniformLocation(program, "LightPos" );
+    glm::vec3 light_position = glm::vec3(0.0,0.0, 3.0);
     glUniformMatrix3fv(lightUni, 1, GL_FALSE, &light_position[0]);
 
-    //Access Light uniform
-    GLuint ambientLightID = glGetUniformLocation(program, "ambientLight");
-    glm::vec3 ambientLight = glm::vec3(0.3, 0.3, 0.3);
-    glUniform3fv(ambientLightID, 1, &ambientLight[0]);
     glBindVertexArray(VAOs[cube]);
 
     //Draw the cube
     glDrawArrays(GL_TRIANGLES, 0, 12*3);
 
-   // glBindVertexArray(VAOs[grid]);
-   // MVP = Projection * View * glm::mat4(1.0);
-   // glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-   // glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(VAOs[grid]);
+    MVP = Projection * View * glm::mat4(1.0);
+    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     glFlush();
     glutSwapBuffers();
@@ -118,7 +106,7 @@ void init()
 
 //    create_wheel(2.0);
     create_cube(shaders[0].shader);
-    //create_grid(shaders[0].shader);
+    create_grid(shaders[0].shader);
 
     glUseProgram(program);
     glutWarpPointer(1024/2, 768/2);
@@ -153,68 +141,61 @@ void keyboard(unsigned char key, int x, int y)
 
 void create_cube(GLuint MyShader)
 {
-    Triangle cubeVertices[12];
-    cubeVertices[0] = Triangle(
-                glm::vec3(-1.0f,-1.0f,-1.0f), // triangle 1 : begin
-                glm::vec3(-1.0f,-1.0f, 1.0f),
-                glm::vec3(-1.0f, 1.0f, 1.0f)
-                );
-    cubeVertices[1] = Triangle(
-                glm::vec3(1.0f, 1.0f,-1.0f), // triangle 1 : begin
-                glm::vec3(-1.0f,-1.0f,-1.0f),
-                glm::vec3(-1.0f, 1.0f,-1.0f)
-                );
-    cubeVertices[2] = Triangle(
-                glm::vec3(1.0f,-1.0f, 1.0f), // triangle 1 : begin
-                glm::vec3(-1.0f,-1.0f,-1.0f),
-                glm::vec3(1.0f,-1.0f,-1.0f)
-                );
-    cubeVertices[3] = Triangle(
-                glm::vec3(1.0f, 1.0f,-1.0f), // triangle 1 : begin
-                glm::vec3(1.0f,-1.0f,-1.0f),
-                glm::vec3(-1.0f,-1.0f,-1.0f)
-                );
-    cubeVertices[4] = Triangle(
-                glm::vec3(-1.0f,-1.0f,-1.0f), // triangle 1 : begin
-                glm::vec3(-1.0f, 1.0f, 1.0f),
-                glm::vec3(-1.0f, 1.0f,-1.0f)
-                );
-    cubeVertices[5] = Triangle(
-                glm::vec3(1.0f,-1.0f, 1.0f), // triangle 1 : begin
-                glm::vec3(-1.0f,-1.0f, 1.0f),
-                glm::vec3(-1.0f,-1.0f,-1.0f)
-                );
-    cubeVertices[6] = Triangle(
-                glm::vec3(-1.0f, 1.0f, 1.0f), // triangle 1 : begin
-                glm::vec3(-1.0f,-1.0f, 1.0f),
-                glm::vec3(1.0f,-1.0f, 1.0f)
-                );
-    cubeVertices[7] = Triangle(
-                glm::vec3(1.0f, 1.0f, 1.0f), // triangle 1 : begin
-                glm::vec3(1.0f,-1.0f,-1.0f),
-                glm::vec3(1.0f, 1.0f,-1.0f)
-                );
-    cubeVertices[8] = Triangle(
-                glm::vec3(1.0f,-1.0f,-1.0f), // triangle 1 : begin
-                glm::vec3(1.0f, 1.0f, 1.0f),
-                glm::vec3(1.0f,-1.0f, 1.0f)
-                );
-    cubeVertices[9] = Triangle(
-                glm::vec3(1.0f, 1.0f, 1.0f), // triangle 1 : begin
-                glm::vec3(1.0f, 1.0f,-1.0f),
-                glm::vec3(-1.0f, 1.0f,-1.0f)
-                );
-    cubeVertices[10] = Triangle(
-                glm::vec3(1.0f, 1.0f, 1.0f), // triangle 1 : begin
-                glm::vec3(-1.0f, 1.0f,-1.0f),
-                glm::vec3(-1.0f, 1.0f, 1.0f)
-                );
-    cubeVertices[11] = Triangle(
-                glm::vec3(1.0f, 1.0f, 1.0f), // triangle 1 : begin
-                glm::vec3(-1.0f, 1.0f, 1.0),
-                glm::vec3(1.0f,-1.0f, 1.0f)
-                );
+    GLfloat cubeVertices[] =
+        {
+                // In OpenGL counter-clockwise winding is default. This means that when we look at a triangle,
+                // if the points are counter-clockwise we are looking at the "front". If not we are looking at
+                // the back. OpenGL has an optimization where all back-facing triangles are culled, since they
+                // usually represent the backside of an object and aren't visible anyways.
 
+                // Front face
+                -1.0f, 1.0f, 1.0f,
+                -1.0f, -1.0f, 1.0f,
+                1.0f, 1.0f, 1.0f,
+                -1.0f, -1.0f, 1.0f,
+                1.0f, -1.0f, 1.0f,
+                1.0f, 1.0f, 1.0f,
+
+                // Right face
+                1.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, 1.0f,
+                1.0f, 1.0f, -1.0f,
+                1.0f, -1.0f, 1.0f,
+                1.0f, -1.0f, -1.0f,
+                1.0f, 1.0f, -1.0f,
+
+                // Back face
+                1.0f, 1.0f, -1.0f,
+                1.0f, -1.0f, -1.0f,
+                -1.0f, 1.0f, -1.0f,
+                1.0f, -1.0f, -1.0f,
+                -1.0f, -1.0f, -1.0f,
+                -1.0f, 1.0f, -1.0f,
+
+                // Left face
+                -1.0f, 1.0f, -1.0f,
+                -1.0f, -1.0f, -1.0f,
+                -1.0f, 1.0f, 1.0f,
+                -1.0f, -1.0f, -1.0f,
+                -1.0f, -1.0f, 1.0f,
+                -1.0f, 1.0f, 1.0f,
+
+                // Top face
+                -1.0f, 1.0f, -1.0f,
+                -1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f, -1.0f,
+                -1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f, -1.0f,
+
+                // Bottom face
+                1.0f, -1.0f, -1.0f,
+                1.0f, -1.0f, 1.0f,
+                -1.0f, -1.0f, -1.0f,
+                1.0f, -1.0f, 1.0f,
+                -1.0f, -1.0f, 1.0f,
+                -1.0f, -1.0f, -1.0f,
+        };
     GLuint posLoc = glGetAttribLocation(1, "pos");
     GLuint colorLoc = glGetAttribLocation(1, "Incolor");
     GLuint normalLoc = glGetAttribLocation(1, "normal");
@@ -230,44 +211,54 @@ void create_cube(GLuint MyShader)
 
     // One color for each vertex. They were generated randomly.
     static const GLfloat g_color_buffer_data[] = {
-        0.583f,  0.771f,  0.014f,
-        0.609f,  0.115f,  0.436f,
-        0.327f,  0.483f,  0.844f,
-        0.822f,  0.569f,  0.201f,
-        0.435f,  0.602f,  0.223f,
-        0.310f,  0.747f,  0.185f,
-        0.597f,  0.770f,  0.761f,
-        0.559f,  0.436f,  0.730f,
-        0.359f,  0.583f,  0.152f,
-        0.483f,  0.596f,  0.789f,
-        0.559f,  0.861f,  0.639f,
-        0.195f,  0.548f,  0.859f,
-        0.014f,  0.184f,  0.576f,
-        0.771f,  0.328f,  0.970f,
-        0.406f,  0.615f,  0.116f,
-        0.676f,  0.977f,  0.133f,
-        0.971f,  0.572f,  0.833f,
-        0.140f,  0.616f,  0.489f,
-        0.997f,  0.513f,  0.064f,
-        0.945f,  0.719f,  0.592f,
-        0.543f,  0.021f,  0.978f,
-        0.279f,  0.317f,  0.505f,
-        0.167f,  0.620f,  0.077f,
-        0.347f,  0.857f,  0.137f,
-        0.055f,  0.953f,  0.042f,
-        0.714f,  0.505f,  0.345f,
-        0.783f,  0.290f,  0.734f,
-        0.722f,  0.645f,  0.174f,
-        0.302f,  0.455f,  0.848f,
-        0.225f,  0.587f,  0.040f,
-        0.517f,  0.713f,  0.338f,
-        0.053f,  0.959f,  0.120f,
-        0.393f,  0.621f,  0.362f,
-        0.673f,  0.211f,  0.457f,
-        0.820f,  0.883f,  0.371f,
-        0.982f,  0.099f,  0.879f
-    };
+                // Front face (red)
+                1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
 
+                // Right face (green)
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+
+                // Back face (blue)
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+
+                // Left face (yellow)
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+
+                // Top face (cyan)
+                0.0f, 1.0f, 1.0f, 1.0f,
+                0.0f, 1.0f, 1.0f, 1.0f,
+                0.0f, 1.0f, 1.0f, 1.0f,
+                0.0f, 1.0f, 1.0f, 1.0f,
+                0.0f, 1.0f, 1.0f, 1.0f,
+                0.0f, 1.0f, 1.0f, 1.0f,
+
+                // Bottom face (magenta)
+                1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, 0.0f, 1.0f, 1.0f
+        };
     GLuint colorbuffer;
     glGenBuffers(1, &colorbuffer);
     glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
@@ -277,75 +268,62 @@ void create_cube(GLuint MyShader)
     glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
     glVertexAttribPointer(
                 colorLoc,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-                3,                                // size
+                4,                                // size
                 GL_FLOAT,                         // type
                 GL_FALSE,                         // normalized?
                 0,                                // stride
                 (void*)0                          // array buffer offset
                 );
 
-Triangle cubeNormals[12];
-    cubeNormals[0] = Triangle(
-                cubeVertices[0].getNormal(),
-                cubeVertices[0].getNormal(),
-                cubeVertices[0].getNormal()
-                );
-    cubeNormals[1] = Triangle(
-                cubeVertices[1].getNormal(),
-                cubeVertices[1].getNormal(),
-                cubeVertices[1].getNormal()
-                );
-    cubeNormals[2] = Triangle(
-                cubeVertices[2].getNormal(),
-                cubeVertices[2].getNormal(),
-                cubeVertices[2].getNormal()
-                );
-    cubeNormals[3] = Triangle(
-                cubeVertices[3].getNormal(),
-                cubeVertices[3].getNormal(),
-                cubeVertices[3].getNormal()
-                );
-    cubeNormals[4] = Triangle(
-                cubeVertices[4].getNormal(),
-                cubeVertices[4].getNormal(),
-                cubeVertices[4].getNormal()
-                );
-    cubeNormals[5] = Triangle(
-                cubeVertices[5].getNormal(),
-                cubeVertices[5].getNormal(),
-                cubeVertices[5].getNormal()
-                );
-    cubeNormals[6] = Triangle(
-                cubeVertices[6].getNormal(),
-                cubeVertices[6].getNormal(),
-                cubeVertices[6].getNormal()
-                );
-    cubeNormals[7] = Triangle(
-                cubeVertices[7].getNormal(),
-                cubeVertices[7].getNormal(),
-                cubeVertices[7].getNormal()
-                );
-    cubeNormals[8] = Triangle(
-                cubeVertices[8].getNormal(),
-                cubeVertices[8].getNormal(),
-                cubeVertices[8].getNormal()
-                );
-    cubeNormals[9] = Triangle(
-                cubeVertices[9].getNormal(),
-                cubeVertices[9].getNormal(),
-                cubeVertices[9].getNormal()
-                );
-    cubeNormals[10] = Triangle(
-                cubeVertices[10].getNormal(),
-                cubeVertices[10].getNormal(),
-                cubeVertices[10].getNormal()
-                );
-    cubeNormals[11] = Triangle(
-                cubeVertices[11].getNormal(),
-                cubeVertices[11].getNormal(),
-                cubeVertices[11].getNormal()
-                );
+    GLfloat cubeNormals[] = {
+                // Front face
+                0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f,
 
+                // Right face
+                1.0f, 0.0f, 0.0f,
+                1.0f, 0.0f, 0.0f,
+                1.0f, 0.0f, 0.0f,
+                1.0f, 0.0f, 0.0f,
+                1.0f, 0.0f, 0.0f,
+                1.0f, 0.0f, 0.0f,
+
+                // Back face
+                0.0f, 0.0f, -1.0f,
+                0.0f, 0.0f, -1.0f,
+                0.0f, 0.0f, -1.0f,
+                0.0f, 0.0f, -1.0f,
+                0.0f, 0.0f, -1.0f,
+                0.0f, 0.0f, -1.0f,
+
+                // Left face
+                -1.0f, 0.0f, 0.0f,
+                -1.0f, 0.0f, 0.0f,
+                -1.0f, 0.0f, 0.0f,
+                -1.0f, 0.0f, 0.0f,
+                -1.0f, 0.0f, 0.0f,
+                -1.0f, 0.0f, 0.0f,
+
+                // Top face
+                0.0f, 1.0f, 0.0f,
+                0.0f, 1.0f, 0.0f,
+                0.0f, 1.0f, 0.0f,
+                0.0f, 1.0f, 0.0f,
+                0.0f, 1.0f, 0.0f,
+                0.0f, 1.0f, 0.0f,
+
+                // Bottom face
+                0.0f, -1.0f, 0.0f,
+                0.0f, -1.0f, 0.0f,
+                0.0f, -1.0f, 0.0f,
+                0.0f, -1.0f, 0.0f,
+                0.0f, -1.0f, 0.0f,
+                0.0f, -1.0f, 0.0f
+    };
     GLuint normalbuffer;
     glGenBuffers(1, &normalbuffer);
     glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
@@ -415,6 +393,9 @@ void create_grid(GLuint MyShader)
         0.0f, 1.0f,0.0f, // triangle 2 : end
     };
 
+    GLuint posLoc = glGetAttribLocation(1, "pos");
+    GLuint colorLoc = glGetAttribLocation(1, "Incolor");
+    GLuint normalLoc = glGetAttribLocation(1, "normal");
     glGenVertexArrays(1, &VAOs[grid]);
     glBindVertexArray(VAOs[grid]);
     GLuint trianglebuffer;
@@ -423,14 +404,14 @@ void create_grid(GLuint MyShader)
     glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+    glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
     GLuint colorbuffer;
     glGenBuffers(1, &colorbuffer);
     glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data), g_color_buffer_data, GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+    glVertexAttribPointer(colorLoc, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
     static const GLfloat normal_data[] = {
         0.0, 1.0, 0.0,
@@ -440,7 +421,6 @@ void create_grid(GLuint MyShader)
         0.0, 1.0, 0.0,
         0.0, 1.0, 0.0,
     };
-    GLuint normalLoc = glGetAttribLocation(1, "normal");
     GLuint normalBuffer;
     glGenBuffers(1, &normalBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
