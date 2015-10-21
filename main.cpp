@@ -52,13 +52,22 @@ void display()
     GLuint MatrixID = glGetUniformLocation(program, "MVP");
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
-    GLuint lightUni = glGetUniformLocation(program, "lightPos");
-    glm::vec3 light_position = glm::vec3(0.0, 3.0, 1.0);
-    glUniformMatrix3fv(lightUni, 1, GL_FALSE, &light_position[0]);
+    //pass Model Matrix to shader
+    GLuint M_ID = glGetUniformLocation(program, "M");
+    glUniformMatrix4fv(M_ID, 1, GL_FALSE, &Cube_Model[0][0]);
 
-    GLuint lightPosUni = glGetUniformLocation(program, "eyedirection");
-    glm::vec3 tmp = cam->getPosition();
-    glUniformMatrix3fv(lightPosUni, 1, GL_FALSE,  &tmp[0]);
+    //pass View Matrix to shader
+    GLuint V_ID = glGetUniformLocation(program, "camera");
+    glm::mat4 camera = Projection * View;
+    glUniformMatrix4fv(V_ID, 1, GL_FALSE, &camera[0][0]);
+
+    //pass Projection Matrix to shader
+    GLuint P_ID = glGetUniformLocation(program, "P");
+    glUniformMatrix4fv(P_ID, 1, GL_FALSE, &Projection[0][0]);
+
+    GLuint lightUni = glGetUniformLocation(program, "LightPosition_worldspace" );
+    glm::vec3 light_position = glm::vec3(0.0, 40.0, 0.0);
+    glUniformMatrix3fv(lightUni, 1, GL_FALSE, &light_position[0]);
 
     //Access Light uniform
     GLuint ambientLightID = glGetUniformLocation(program, "ambientLight");
@@ -69,10 +78,10 @@ void display()
     //Draw the cube
     glDrawArrays(GL_TRIANGLES, 0, 12*3);
 
-    glBindVertexArray(VAOs[grid]);
-    MVP = Projection * View * glm::mat4(1.0);
-    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-    //glDrawArrays(GL_TRIANGLES, 0, 6);
+   // glBindVertexArray(VAOs[grid]);
+   // MVP = Projection * View * glm::mat4(1.0);
+   // glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+   // glDrawArrays(GL_TRIANGLES, 0, 6);
 
     glFlush();
     glutSwapBuffers();
@@ -109,7 +118,7 @@ void init()
 
 //    create_wheel(2.0);
     create_cube(shaders[0].shader);
-   // create_grid(shaders[0].shader);
+    //create_grid(shaders[0].shader);
 
     glUseProgram(program);
     glutWarpPointer(1024/2, 768/2);
@@ -275,16 +284,72 @@ void create_cube(GLuint MyShader)
                 (void*)0                          // array buffer offset
                 );
 
-    glm::vec3 g_normal_buffer_data[12];
-    for(int i=0; i<11;i++)
-    {
-        g_normal_buffer_data[i] = cubeVertices[i].getNormal();
-    }
+Triangle cubeNormals[12];
+    cubeNormals[0] = Triangle(
+                cubeVertices[0].getNormal(),
+                cubeVertices[0].getNormal(),
+                cubeVertices[0].getNormal()
+                );
+    cubeNormals[1] = Triangle(
+                cubeVertices[1].getNormal(),
+                cubeVertices[1].getNormal(),
+                cubeVertices[1].getNormal()
+                );
+    cubeNormals[2] = Triangle(
+                cubeVertices[2].getNormal(),
+                cubeVertices[2].getNormal(),
+                cubeVertices[2].getNormal()
+                );
+    cubeNormals[3] = Triangle(
+                cubeVertices[3].getNormal(),
+                cubeVertices[3].getNormal(),
+                cubeVertices[3].getNormal()
+                );
+    cubeNormals[4] = Triangle(
+                cubeVertices[4].getNormal(),
+                cubeVertices[4].getNormal(),
+                cubeVertices[4].getNormal()
+                );
+    cubeNormals[5] = Triangle(
+                cubeVertices[5].getNormal(),
+                cubeVertices[5].getNormal(),
+                cubeVertices[5].getNormal()
+                );
+    cubeNormals[6] = Triangle(
+                cubeVertices[6].getNormal(),
+                cubeVertices[6].getNormal(),
+                cubeVertices[6].getNormal()
+                );
+    cubeNormals[7] = Triangle(
+                cubeVertices[7].getNormal(),
+                cubeVertices[7].getNormal(),
+                cubeVertices[7].getNormal()
+                );
+    cubeNormals[8] = Triangle(
+                cubeVertices[8].getNormal(),
+                cubeVertices[8].getNormal(),
+                cubeVertices[8].getNormal()
+                );
+    cubeNormals[9] = Triangle(
+                cubeVertices[9].getNormal(),
+                cubeVertices[9].getNormal(),
+                cubeVertices[9].getNormal()
+                );
+    cubeNormals[10] = Triangle(
+                cubeVertices[10].getNormal(),
+                cubeVertices[10].getNormal(),
+                cubeVertices[10].getNormal()
+                );
+    cubeNormals[11] = Triangle(
+                cubeVertices[11].getNormal(),
+                cubeVertices[11].getNormal(),
+                cubeVertices[11].getNormal()
+                );
 
     GLuint normalbuffer;
     glGenBuffers(1, &normalbuffer);
     glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(g_normal_buffer_data), g_normal_buffer_data, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeNormals), cubeNormals, GL_STATIC_DRAW);
 
     glVertexAttribPointer(
                 normalLoc,                                // attribute. No particular reason for 1, but must match the layout in the shader.
@@ -367,6 +432,31 @@ void create_grid(GLuint MyShader)
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
+    static const GLfloat normal_data[] = {
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+    };
+    GLuint normalLoc = glGetAttribLocation(1, "normal");
+    GLuint normalBuffer;
+    glGenBuffers(1, &normalBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(normal_data), normal_data, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(
+                normalLoc,
+                3,
+                GL_FLOAT,
+                GL_TRUE,
+                0,
+                (void*)0
+                );
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
 }
 
 void mouse_func(int x, int y)
