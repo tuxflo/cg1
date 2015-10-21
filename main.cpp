@@ -58,7 +58,7 @@ void display()
     glUniformMatrix4fv(MV_ID, 1, GL_FALSE, &MV[0][0]);
 
     GLuint lightUni = glGetUniformLocation(program, "LightPos" );
-    glm::vec3 light_position = glm::vec3(0.0,0.0, 3.0);
+    glm::vec3 light_position = glm::vec3(0.0,0.0, 13.0);
     glUniformMatrix3fv(lightUni, 1, GL_FALSE, &light_position[0]);
 
     glBindVertexArray(VAOs[cube]);
@@ -69,7 +69,7 @@ void display()
     glBindVertexArray(VAOs[grid]);
     MVP = Projection * View * glm::mat4(1.0);
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    //glDrawArrays(GL_TRIANGLES, 0, 6);
 
     glFlush();
     glutSwapBuffers();
