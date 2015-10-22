@@ -39,13 +39,14 @@ void create_grid(GLuint MyShader);
 void display()
 {
     //white background
-    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClearColor(0.3, 0.3, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // Camera matrix
     cam->calculatePositions();
     glm::mat4 Projection = cam->getProjectionMatrix();
     glm::mat4 View  = cam->getViewMatrix();    // Model matrix : an identity matrix (model will be at the origin)
-    Cube_Model = glm::translate(glm::mat4(1.0), glm::vec3(0.0, 1.0, 0.0));
+    //Cube_Model = glm::translate(glm::mat4(1.0), glm::vec3(0.0, 1.0, 0.0));
+    Cube_Model = glm::mat4(1.0);
     glm::mat4 MVP        = Projection * View * Cube_Model;
 
     //pass updated model to the shader (wheel)
@@ -53,12 +54,25 @@ void display()
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
     //pass Model Matrix to shader
-    GLuint MV_ID = glGetUniformLocation(program, "MV");
-    glm::mat4 MV = View;
-    glUniformMatrix4fv(MV_ID, 1, GL_FALSE, &MV[0][0]);
+    GLuint M_ID = glGetUniformLocation(program, "m");
+    glm::mat4 M = Cube_Model;
+    glUniformMatrix4fv(M_ID, 1, GL_FALSE, &M[0][0]);
+    //pass Model Matrix to shader
+
+    GLuint V_ID = glGetUniformLocation(program, "v");
+    glm::mat4 V = View;
+    glUniformMatrix4fv(V_ID, 1, GL_FALSE, &V[0][0]);
+
+    GLuint P_ID = glGetUniformLocation(program, "p");
+    glm::mat4 P = cam->getProjectionMatrix();
+    glUniformMatrix4fv(P_ID, 1, GL_FALSE, &P[0][0]);
+
+    GLuint uniform_m_3x3_inv_transp = glGetUniformLocation(program, "m_3x3_inv_transp");
+    glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(Cube_Model)));
+  glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
 
     GLuint lightUni = glGetUniformLocation(program, "LightPos" );
-    glm::vec3 light_position = glm::vec3(0.0,0.0, 13.0);
+    glm::vec3 light_position = glm::vec3(0.0,1.0, 0.0);
     glUniformMatrix3fv(lightUni, 1, GL_FALSE, &light_position[0]);
 
     glBindVertexArray(VAOs[cube]);
@@ -196,9 +210,9 @@ void create_cube(GLuint MyShader)
                 -1.0f, -1.0f, 1.0f,
                 -1.0f, -1.0f, -1.0f,
         };
-    GLuint posLoc = glGetAttribLocation(1, "pos");
-    GLuint colorLoc = glGetAttribLocation(1, "Incolor");
-    GLuint normalLoc = glGetAttribLocation(1, "normal");
+    GLuint posLoc = glGetAttribLocation(1, "v_coord");
+    GLuint colorLoc = glGetAttribLocation(1, "v_color");
+    GLuint normalLoc = glGetAttribLocation(1, "v_normal");
     //called trigangle but is drawing the cube
     glGenVertexArrays(1, &VAOs[cube]);
     glBindVertexArray(VAOs[cube]);
