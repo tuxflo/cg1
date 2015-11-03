@@ -1,10 +1,13 @@
 attribute vec4 v_coord;
 attribute vec3 v_normal;
 attribute vec4 v_color;
+attribute vec2 v_UV;
+
 uniform mat4 m, v, p;
 uniform mat3 m_3x3_inv_transp;
+uniform vec4 lightPos;
 varying vec4 color;
-
+varying vec2 UV;
 struct lightSource
 {
   vec4 position;
@@ -14,7 +17,7 @@ struct lightSource
   vec3 spotDirection;
 };
 lightSource light0 = lightSource(
-    vec4(1.5,  1.5,  1.5, 1.0),
+    lightPos,
     vec4(1.0, 1.0, 1.0, 1.0),
     0.0, 0.5, 0.0,
     50.0, 20.0,
@@ -29,6 +32,8 @@ material mymaterial = material(v_color);
 
 void main(void)
 {
+    //texture
+    UV = v_UV;
   mat4 mvp = p*v*m;
   vec3 normalDirection = normalize(m_3x3_inv_transp * v_normal);
   vec3 lightDirection;

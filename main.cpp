@@ -7,6 +7,7 @@
 #include "glm/glm/gtc/type_ptr.hpp"
 #include "camera.h"
 #include "triangle.h"
+#include "TextureLoader.h"
 
 #define DEPTH 32
 #define NUM_VERTICES (DEPTH+1)*(DEPTH+1)
@@ -31,6 +32,7 @@ static double lastTime;
 GLuint wheelbuffer;
 GLuint wheelarray;
 GLuint cubearray;
+glm::vec4 lightPos = glm::vec4(1.5, 1.5, 1.5, 1.0);
 
 void create_wheel(float radius);
 void create_cube(GLuint MyShader);
@@ -71,10 +73,8 @@ void display()
     glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(Cube_Model)));
   glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
 
-    GLuint lightUni = glGetUniformLocation(program, "LightPos" );
-    glm::vec3 light_position = glm::vec3(0.0,1.0, 0.0);
-    glUniformMatrix3fv(lightUni, 1, GL_FALSE, &light_position[0]);
-
+    GLuint lightUni = glGetUniformLocation(program, "lightPos" );
+    glUniform4fv(lightUni, 1, glm::value_ptr(lightPos));
     glBindVertexArray(VAOs[cube]);
 
     //Draw the cube
@@ -351,6 +351,71 @@ void create_cube(GLuint MyShader)
                 0,                                // stride
                 (void*)0                          // array buffer offset
                 );
+    //Load Texture
+    static const GLfloat g_uv_buffer_data[] = {
+        1.1, 1.0,
+        1.1, 0.0,
+        0.1, 1.0,
+
+        1.1, 0.0,
+        0.1, 0.0,
+        0.1, 1.0,
+        0.667979f, 1.0f-0.335851f,
+        0.336024f, 1.0f-0.671877f,
+        0.667969f, 1.0f-0.671889f,
+        1.000023f, 1.0f-0.000013f,
+        0.668104f, 1.0f-0.000013f,
+        0.667979f, 1.0f-0.335851f,
+        0.000059f, 1.0f-0.000004f,
+        0.335973f, 1.0f-0.335903f,
+        0.336098f, 1.0f-0.000071f,
+        0.667979f, 1.0f-0.335851f,
+        0.335973f, 1.0f-0.335903f,
+        0.336024f, 1.0f-0.671877f,
+        1.000004f, 1.0f-0.671847f,
+        0.999958f, 1.0f-0.336064f,
+        0.667979f, 1.0f-0.335851f,
+        0.668104f, 1.0f-0.000013f,
+        0.335973f, 1.0f-0.335903f,
+        0.667979f, 1.0f-0.335851f,
+        0.335973f, 1.0f-0.335903f,
+        0.668104f, 1.0f-0.000013f,
+        0.336098f, 1.0f-0.000071f,
+        0.000103f, 1.0f-0.336048f,
+        0.000004f, 1.0f-0.671870f,
+        0.336024f, 1.0f-0.671877f,
+        0.000103f, 1.0f-0.336048f,
+        0.336024f, 1.0f-0.671877f,
+        0.335973f, 1.0f-0.335903f,
+        0.667969f, 1.0f-0.671889f,
+        1.000004f, 1.0f-0.671847f,
+        0.667979f, 1.0f-0.335851f
+    };
+
+    GLuint uvbuffer;
+    glGenBuffers(1, &uvbuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+    glVertexAttribPointer(
+        3,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+        2,                                // size : U+V => 2
+        GL_FLOAT,                         // type
+        GL_FALSE,                         // normalized?
+        0,                                // stride
+        (void*)0                          // array buffer offset
+    );
+    GLuint Texture = loadBMP_custom("uvtemplate.bmp");
+        // Two UV coordinatesfor each vertex. They were created withe Blender.
+    glEnableVertexAttribArray(3);
+    glBindTexture(GL_TEXTURE_2D, Texture);
+    GLuint TextureID = glGetUniformLocation(program, "myTextureSampler");
+    glUniform1i(TextureID, 0);
+
+    // Bind our texture in Texture Unit 0
+    glActiveTexture(GL_TEXTURE0);
+    // Set our "myTextureSampler" sampler to user Texture Unit 0
+    glUniform1i(TextureID, 0);
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
