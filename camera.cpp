@@ -13,9 +13,11 @@ Camera::Camera(bool stat)
      _mouseSpeed = 0.004f;
      _speed = 5.0f;
     _ViewMatrix =  glm::lookAt(
-        glm::vec3(0, 0, 5), // Camera is at (4,3,3), in World Space
+        glm::vec3(5, 5, 5), // Camera is at (4,3,3), in World Space
         glm::vec3(0, 0, 0), // and looks at the origin
         glm::vec3(0,1,0));
+    _ProjectionMatrix = glm::perspective(_initialFoV, 4.0f / 3.0f, 0.1f, 100.0f);
+
 }
 
 glm::mat4 Camera::getProjectionMatrix()
@@ -92,11 +94,23 @@ void Camera::right()
 
 void Camera::setPos(int x, int y)
 {
-   _xpos = x;
-   _ypos = y;
-   calculatePositions();
-   if ( x != 1024 / 2 || y != 768/2 )
-    glutWarpPointer(1024 / 2, 768 / 2);
+    //fragen ob Focus
+    //fragen ob Maus im Fenster
+    glm::vec2 mouseDelta = glm::vec2(x, y) - glm::vec2(_xpos, _ypos);
+    float delta = glm::distance(glm::vec2(x, y), glm::vec2(_xpos, _ypos));
+
+
+    //std::cout << "Vektor x: " << mouseDelta.x << "Vektor y: " << mouseDelta.y << " Länge: " << delta << std::endl;
+    if (delta > 50)
+    {
+        x = 1024 / 2;
+        y = 768 / 2;
+    }
+    _xpos = x;
+    _ypos = y;
+    calculatePositions();
+    if (x != 1024 / 2 || y != 768 / 2)
+        glutWarpPointer(1024 / 2, 768 / 2);
 }
 
 float Camera::setDeltaTime(float delta)
