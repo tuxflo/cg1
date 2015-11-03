@@ -32,7 +32,7 @@ static double lastTime;
 GLuint wheelbuffer;
 GLuint wheelarray;
 GLuint cubearray;
-glm::vec4 lightPos = glm::vec4(1.5, 1.5, 1.5, 1.0);
+glm::vec4 lightPos = glm::vec4(0.0, 1.5, 2.5, 1.0);
 
 void create_wheel(float radius);
 void create_cube(GLuint MyShader);
@@ -151,6 +151,27 @@ void keyboard(unsigned char key, int x, int y)
         cam = &fps_cam;
         break;
     }
+}
+
+void arrows(int key, int x, int y)
+{
+   switch(key)
+   {
+   case(GLUT_KEY_LEFT):
+       lightPos.x -= 0.1;
+       break;
+   case(GLUT_KEY_RIGHT):
+       lightPos.x += 0.1;
+       break;
+   case(GLUT_KEY_UP):
+       lightPos.y += 0.1;
+       break;
+   case(GLUT_KEY_DOWN):
+       lightPos.y -= 0.1;
+       break;
+
+
+   }
 }
 
 void create_cube(GLuint MyShader)
@@ -549,6 +570,7 @@ int main(int argc, char** argv)
 
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
+    glutSpecialFunc(arrows);
     glutIdleFunc(display);
     glutPassiveMotionFunc(mouse_func);
    glutTimerFunc(25, timer, 0);
