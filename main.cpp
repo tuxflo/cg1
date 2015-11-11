@@ -1,6 +1,7 @@
 #include <iostream>
 #include "vgl.h"
-#include <math.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"#include <math.h>
 #include "LoadShaders.h"
 #include "glm/glm/glm.hpp"
 #include "glm/glm/gtc/matrix_transform.hpp"
@@ -9,6 +10,12 @@
 #include "triangle.h"
 #include "TextureLoader.h"
 
+#define FRONT "negz.jpg"
+#define BACK "posz.jpg"
+#define TOP "posy.jpg"
+#define BOTTOM "negy.jpg"
+#define LEFT "negx.jpg"
+#define RIGHT "posx.jpg"
 #define DEPTH 32
 #define NUM_VERTICES (DEPTH+1)*(DEPTH+1)
 #define NUM_INDICES 2*3*DEPTH*DEPTH
@@ -18,7 +25,7 @@ using namespace std;
 
 enum Attrib_IDs { vPosition = 0 };
 //0 - wheel 1- cube
-enum VAO_IDs {wheel, cube, grid, normal};
+enum VAO_IDs {wheel, cube, grid, normal, skybox};
 // Number of VAOs: 3
 GLuint VAOs[3];
 const GLuint Numvertices = 6;
@@ -32,12 +39,81 @@ static double lastTime;
 GLuint wheelbuffer;
 GLuint wheelarray;
 GLuint cubearray;
+GLuint cube_map_texture;
+int numVertices;
 glm::vec4 lightPos = glm::vec4(0.0, 1.5, 2.5, 1.0);
 
 void create_wheel(float radius);
 void create_cube(GLuint MyShader);
 void create_grid(GLuint MyShader);
+void create_skybox();
 
+/* use stb_image to load an image file into memory, and then into one side of
+a cube-map texture. */
+bool load_cube_map_side(
+    GLuint texture, GLenum side_target, const char* file_name
+) {
+    glBindTexture (GL_TEXTURE_CUBE_MAP, texture);
+
+    int x, y, n;
+    int force_channels = 4;
+    unsigned char*  image_data = stbi_load(file_name, &x, &y, &n, force_channels);
+    if (!image_data) {
+        fprintf (stderr, "ERROR: could not load %s\n", file_name);
+        return false;
+    }
+    // non-power-of-2 dimensions check
+    if ((x & (x - 1)) != 0 || (y & (y - 1)) != 0) {
+        fprintf (
+            stderr, "WARNING: image %s is not power-of-2 dimensions\n", file_name
+        );
+    }
+
+    // copy image data into 'target' side of cube map
+    glTexImage2D (
+        side_target,
+        0,
+        GL_RGBA,
+        x,
+        y,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        image_data
+    );
+    free (image_data);
+    return true;
+}
+
+/* load all 6 sides of the cube-map from images, then apply formatting to the
+final texture */
+void create_cube_map (
+    const char* front,
+    const char* back,
+    const char* top,
+    const char* bottom,
+    const char* left,
+    const char* right,
+    GLuint* tex_cube
+) {
+    // generate a cube-map texture to hold all the sides
+    glActiveTexture (GL_TEXTURE0);
+    glGenTextures (1, tex_cube);
+
+    // load each image and copy into a side of the cube-map texture
+    assert (load_cube_map_side (*tex_cube, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, front));
+    assert (load_cube_map_side (*tex_cube, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, back));
+    assert (load_cube_map_side (*tex_cube, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, top));
+    assert (load_cube_map_side (*tex_cube, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, bottom));
+    assert (load_cube_map_side (*tex_cube, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, left));
+    assert (load_cube_map_side (*tex_cube, GL_TEXTURE_CUBE_MAP_POSITIVE_X, right));
+    // format cube map texture
+    glTexParameteri (GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri (GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri (GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri (GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri (GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
 void display()
 {
     //white background
@@ -75,7 +151,7 @@ void display()
 
     GLuint lightUni = glGetUniformLocation(program, "lightPos" );
     glUniform4fv(lightUni, 1, glm::value_ptr(lightPos));
-    glBindVertexArray(VAOs[cube]);
+    glBindVertexArray(VAOs[skybox]);
 
     //Draw the cube
     glDrawArrays(GL_TRIANGLES, 0, 12*3);
@@ -84,6 +160,12 @@ void display()
     MVP = Projection * View * glm::mat4(1.0);
     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
     //glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glBindVertexArray(VAOs[wheel]);
+    MVP = Projection * View * Wheel_Model;
+    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 62);
+
 
     glFlush();
     glutSwapBuffers();
@@ -118,13 +200,15 @@ void init()
     program = LoadShaders(shaders);
 
 
-//    create_wheel(2.0);
+    create_wheel(2.0);
     create_cube(shaders[0].shader);
-    create_grid(shaders[0].shader);
+  //  create_grid(shaders[0].shader);
 
+    create_skybox();
     glUseProgram(program);
     glutWarpPointer(1024/2, 768/2);
 }
+
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -444,33 +528,70 @@ void create_cube(GLuint MyShader)
 
 void create_wheel(float radius)
 {
-    int amount = 1000;
-    glm::vec2 circle_pos[amount*2];
-    // calc degree to rad: PI / 180°
-    int count = 1000;
-    for( int i =0; i <= amount; i++ )
-    {
-        float twicePI = 2*M_PI;
-        circle_pos[i].x += cos((float)i * twicePI/amount)*radius;
-        circle_pos[i].y += sin((float)i * twicePI/amount)*radius;
-        if(count < 2000)
-        {
-            circle_pos[count].x -= cos((float)i * twicePI/25)*radius;
-            circle_pos[count].y -= sin((float)i * twicePI/25)*radius;;
+    int sides = 30;
+const float theta = 2. * M_PI / (float)sides;
+    float c = cos(theta);
+    float s = sin(theta);
+// coordinates on top of the circle, on xz plane
+float x2 = radius, z2 = 0;
+float x = 0.0;
+float y = 0.0;
+float z = 0.0;
+int height = 5;
 
-            circle_pos[count+1].x += cos((float)i * twicePI/25)*radius;
-            circle_pos[count+1].y += sin((float)i * twicePI/25)*radius;
-        }
-        count += 2;
-    }
+glm::vec3 Normals[sides + 4][2];
+// make the strip
+glm::vec3 Vertices[sides + 4][2];
+glm::vec2 Texture[sides + 4][2];
+for(int i=0; i<=sides; i++) {
+    // texture coord
+    const float tx = (float)i/sides;
+    // normal
+    const float nf = 1./sqrt(x2*x2+z2*z2),
+        xn = x2*nf, zn = z2*nf;
+    Vertices[i][0].x =  x+x2;
+    Vertices[i][0].y =  y;
+    Vertices[i][0].z =  z+z2;
+    Vertices[i][1].x = x+x2;
+    Vertices[i][1].y = y+height;
+    Vertices[i][1].z = z+z2;
+    Normals[i][0].x = xn;
+    Normals[i][0].y = 0.0;
+    Normals[i][0].z = zn;
+    Normals[i][1].x = xn;
+    Normals[i][1].y = 0.0;
+    Normals[i][1].z = zn;
+    Texture[i][0].x = tx;
+    Texture[i][0].y = 0;
+    Texture[i][1].x = tx;
+    Texture[i][1].y = 1;
+    // next position
+    const float x3 = x2;
+    x2 = c * x2 - s * z2;
+    z2 = s * x3 + c * z2;
+}
      glGenVertexArrays(1, &VAOs[wheel]);
      glBindVertexArray(VAOs[wheel]);
      GLuint wheelbuffer;
      glGenBuffers(1, &wheelbuffer);
      glBindBuffer(GL_ARRAY_BUFFER, wheelbuffer);
-     glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * 2 * amount,circle_pos, GL_STATIC_DRAW);
+     glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices),Vertices, GL_STATIC_DRAW);
      glEnableVertexAttribArray(0);
-     glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+     glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+
+     GLuint normalBuffer;
+     glGenBuffers(1, &normalBuffer);
+     glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+     glBufferData(GL_ARRAY_BUFFER, sizeof(Normals), Normals, GL_STATIC_DRAW);
+     glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 0, BUFFER_OFFSET(0));
+     glEnableVertexAttribArray(1);
+
+     GLuint textureBuffer;
+     glGenBuffers(1, &textureBuffer);
+     glBindBuffer(GL_ARRAY_BUFFER, textureBuffer);
+     glBufferData(GL_ARRAY_BUFFER, sizeof(Texture), Texture, GL_STATIC_DRAW);
+     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+     glEnableVertexAttribArray(2);
 }
 
 void create_grid(GLuint MyShader)
@@ -539,6 +660,64 @@ void create_grid(GLuint MyShader)
     glEnableVertexAttribArray(2);
 }
 
+void create_skybox()
+{
+    float points[] = {
+  -15.0f,  15.0f, -15.0f,
+  -15.0f, -15.0f, -15.0f,
+   15.0f, -15.0f, -15.0f,
+   15.0f, -15.0f, -15.0f,
+   15.0f,  15.0f, -15.0f,
+  -15.0f,  15.0f, -15.0f,
+
+  -15.0f, -15.0f,  15.0f,
+  -15.0f, -15.0f, -15.0f,
+  -15.0f,  15.0f, -15.0f,
+  -15.0f,  15.0f, -15.0f,
+  -15.0f,  15.0f,  15.0f,
+  -15.0f, -15.0f,  15.0f,
+
+   15.0f, -15.0f, -15.0f,
+   15.0f, -15.0f,  15.0f,
+   15.0f,  15.0f,  15.0f,
+   15.0f,  15.0f,  15.0f,
+   15.0f,  15.0f, -15.0f,
+   15.0f, -15.0f, -15.0f,
+
+  -15.0f, -15.0f,  15.0f,
+  -15.0f,  15.0f,  15.0f,
+   15.0f,  15.0f,  15.0f,
+   15.0f,  15.0f,  15.0f,
+   15.0f, -15.0f,  15.0f,
+  -15.0f, -15.0f,  15.0f,
+
+  -15.0f,  15.0f, -15.0f,
+   15.0f,  15.0f, -15.0f,
+   15.0f,  15.0f,  15.0f,
+   15.0f,  15.0f,  15.0f,
+  -15.0f,  15.0f,  15.0f,
+  -15.0f,  15.0f, -15.0f,
+
+  -15.0f, -15.0f, -15.0f,
+  -15.0f, -15.0f,  15.0f,
+   15.0f, -15.0f, -15.0f,
+   15.0f, -15.0f, -15.0f,
+  -15.0f, -15.0f,  15.0f,
+   15.0f, -15.0f,  15.0f
+};
+
+    glGenVertexArrays(1, &VAOs[skybox]);
+    glBindVertexArray(VAOs[skybox]);
+    GLuint buffer;
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glBindBuffer (GL_ARRAY_BUFFER, buffer);
+    glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+    GLuint cube_map_texture;
+    create_cube_map (FRONT, BACK, TOP, BOTTOM, LEFT, RIGHT, &cube_map_texture);
+}
 void mouse_func(int x, int y)
 {
     cam->setPos(x, y);
@@ -562,7 +741,7 @@ int main(int argc, char** argv)
     }
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowSize(1024, 768);
-    glutInitContextVersion(2, 1);
+    glutInitContextVersion(3, 3);
     glutInitContextProfile(GLUT_CORE_PROFILE);
     glutCreateWindow("Shader example");
 

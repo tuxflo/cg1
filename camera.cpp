@@ -6,7 +6,7 @@ Camera::Camera(bool stat)
     _lastTime = 0;
     _horizontalAngle = 3.14;
     _verticalAngle = 0.0;
-    _initialFoV = 45.0f;
+    _initialFoV = 67.0f;
      _position = glm::vec3( 0, 0, 5 );
      _right = glm::vec3(0.0);
      _direction = glm::vec3(0.0);
@@ -101,7 +101,7 @@ void Camera::setPos(int x, int y)
 
 
     //std::cout << "Vektor x: " << mouseDelta.x << "Vektor y: " << mouseDelta.y << " Länge: " << delta << std::endl;
-    if (delta > 50)
+    if (delta > 80)
     {
         x = 1024 / 2;
         y = 768 / 2;
